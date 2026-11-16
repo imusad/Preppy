@@ -196,7 +196,8 @@ export async function discoverUrls(src: SourceConfig, limit: number): Promise<st
         if (/recipe|post/i.test(loc)) queue.unshift(loc); else if (!/image|video|author|tag|categor|page-sitemap|news/i.test(loc)) queue.push(loc);
       } else if (include.test(loc)) {
         const path = new URL(loc).pathname;
-        if (!blocked.some((b) => b !== '/' && path.startsWith(b.replace(/\*.*$/, '')))) found.add(loc);
+        // Wildcard rules are cut at the first *; a rule that leaves no real prefix is ignored.
+        if (!blocked.some((b) => { const prefix = b.replace(/\*.*$/, ''); return prefix.length > 1 && path.startsWith(prefix); })) found.add(loc);
       }
     }
   }

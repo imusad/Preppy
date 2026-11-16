@@ -71,7 +71,7 @@ export const settings = {
   /** Approved recipe sources (INT-3). Remove a line to stop using a site. */
   sources: [
     { id: 'hebbars', name: 'Hebbars Kitchen', host: 'hebbarskitchen.com', include: '^https://hebbarskitchen\\.com/[a-z0-9-]+-recipe[a-z0-9-]*/$' },
-    { id: 'archanas', name: "Archana's Kitchen", host: 'www.archanaskitchen.com', include: '^https://www\\.archanaskitchen\\.com/[a-z0-9-]+-recipe[a-z0-9-]*$' },
+    { id: 'archanas', name: "Archana's Kitchen", host: 'www.archanaskitchen.com', include: '^https://www\\.archanaskitchen\\.com/recipe/[a-z0-9-]+$' },
     { id: 'ranveer', name: 'Ranveer Brar', host: 'ranveerbrar.com', include: '^https://ranveerbrar\\.com/recipes/[a-z0-9-]+/$' },
     { id: 'swasthi', name: "Swasthi's Recipes", host: 'www.indianhealthyrecipes.com', include: '^https://www\\.indianhealthyrecipes\\.com/[a-z0-9-]+/$' },
     { id: 'bongeats', name: 'Bong Eats', host: 'www.bongeats.com', include: '^https://www\\.bongeats\\.com/recipe/[a-z0-9-]+$' },
