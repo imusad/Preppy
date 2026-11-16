@@ -1,11 +1,11 @@
 // Turns a raw recipe page into a tagged library recipe (PDD MMP-BE-S3, decision points B2–B7).
 // Haiku tags; the fixed word list checks allergens independently; Sonnet settles disagreements.
 import { createHash } from 'node:crypto';
-import { dishKey } from '@/lib/library/dishKey';
+import { cleanName, dishKey } from '@/lib/library/dishKey';
 import type { AiRequest } from '@/lib/ai';
 import { PRICE_ITEMS } from '@/lib/data/priceItems';
 import { UTENSILS } from '@/lib/data/catalog';
-import { ALLERGEN_IDS, scanAllergens } from '@/lib/library/wordlist';
+import { ALLERGEN_IDS, mentions, scanAllergens } from '@/lib/library/wordlist';
 import type { FoodCategory, FullRecipe, RawRecipe, SlimRecipe } from '@/lib/library/types';
 import { CUISINES, HEALTH_FLAGS, settings, type HealthFlag } from '@/lib/settings';
 import type { AllergenId } from '@/lib/types';
@@ -127,12 +127,13 @@ export function tagRequest(raw: RawRecipe, model = settings.models.tagging): AiR
 /** Allergens where the word list says "contains" but the tagger said "no" or "unsure". */
 export function allergenDisputes(raw: RawRecipe, tag: TagAnswer): AllergenId[] {
   const words = new Set(scanAllergens([raw.name, ...raw.ingredientLines]));
-  return ALLERGEN_IDS.filter((a) => (words.has(a) && tag.allergens[a] !== 'yes') || tag.allergens[a] === 'unsure');
+  // Only a real disagreement gets a second look. The tagger's own "unsure" stays unsure (treated as present).
+  return ALLERGEN_IDS.filter((a) => words.has(a) && tag.allergens[a] === 'no');
 }
 
 export function disputeRequest(raw: RawRecipe, disputed: AllergenId[]): AiRequest {
   return {
-    task: 'allergen-recheck', model: settings.models.recheck, maxTokens: 1500,
+    task: 'allergen-recheck', model: settings.models.allergenCheck, maxTokens: 1500,
     system: `You settle allergen questions about a recipe for a household meal planner. For each allergen asked about, answer "yes" if any ingredient contains it or very commonly contains it, "no" only if you are confident none does, and "unsure" if it depends on a bought product whose contents are unknown. A missed allergen is far worse than a false alarm.`,
     schema: {
       type: 'object', additionalProperties: false, required: disputed,
@@ -149,6 +150,22 @@ function round(n: number, places = 2): number {
   return Math.round(n * f) / f;
 }
 
+const MEAT_TERMS = ['chicken', 'mutton', 'lamb', 'beef', 'pork', 'bacon', 'ham', 'turkey', 'duck', 'sausage', 'salami', 'pepperoni', 'chorizo', 'prosciutto', 'pancetta', 'keema', 'kheema', 'gosht', 'murgh', 'meat', 'steak', 'veal', 'venison', 'goat', 'lard', 'gelatin', 'gelatine', 'bone broth', 'meatball'];
+const MEAT_EXCEPT = ['vegan', 'vegetarian', 'meatless', 'mock meat', 'soya', 'soy ', 'plant-based', 'plant based', 'jackfruit', 'coconut meat', 'hamburger bun', 'duck sauce'];
+const RANK: Record<FoodCategory, number> = { vegan: 0, vegetarian: 1, egg: 2, fish: 3, meat: 4 };
+
+/** Plain-code second check of the diet category: the more restrictive of the tagger's answer and the word list wins. */
+function safeCategory(tagged: FoodCategory, raw: RawRecipe): FoodCategory {
+  const lines = raw.ingredientLines.map((l) => l.toLowerCase());
+  const found = new Set(scanAllergens(lines));
+  let words: FoodCategory = 'vegan';
+  if (found.has('milk')) words = 'vegetarian';
+  if (found.has('eggs')) words = 'egg';
+  if (found.has('fish') || found.has('crustaceans') || found.has('molluscs')) words = 'fish';
+  if (lines.some((l) => !MEAT_EXCEPT.some((e) => l.includes(e)) && mentions([l], MEAT_TERMS))) words = 'meat';
+  return RANK[words] > RANK[tagged] ? words : tagged;
+}
+
 export type Finalised = { ok: true; slim: SlimRecipe; full: FullRecipe } | { ok: false; reason: string };
 
 /**
@@ -157,7 +174,9 @@ export type Finalised = { ok: true; slim: SlimRecipe; full: FullRecipe } | { ok:
  */
 export function finalise(raw: RawRecipe, tag: TagAnswer, sourceName: string, ruling: Partial<Record<AllergenId, 'yes' | 'no' | 'unsure'>> = {}): Finalised {
   if (!tag.complete || tag.kind === 'neither') return { ok: false, reason: 'not a lunch or dinner recipe' };
-  if (tag.steps.length !== raw.stepLines.length) return { ok: false, reason: 'steps could not be matched' };
+  if (tag.steps.length === 0) return { ok: false, reason: 'steps could not be matched' };
+  // If the tagger merged or split steps, extra page steps take the timing of the last tagged step.
+  const stepTag = (i: number) => tag.steps[i] ?? { when: tag.steps[tag.steps.length - 1].when, min: 0 };
   const servings = Math.max(1, tag.servings || raw.servings || 2);
 
   const words = new Set(scanAllergens([raw.name, ...raw.ingredientLines]));
@@ -172,13 +191,14 @@ export function finalise(raw: RawRecipe, tag: TagAnswer, sourceName: string, rul
     else if (r !== 'no') allergenUnsure.push(a);
   }
 
-  const steps = raw.stepLines.map((text, i) => ({ text, when: tag.steps[i].when, min: Math.max(0, Math.round(tag.steps[i].min)) }));
+  const steps = raw.stepLines.map((text, i) => ({ text, when: stepTag(i).when, min: Math.max(0, Math.round(stepTag(i).min)) }));
   const aheadMin = steps.filter((s) => s.when === 'ahead').reduce((t, s) => t + s.min, 0);
   const lastMin = steps.filter((s) => s.when === 'last').reduce((t, s) => t + s.min, 0);
   const totalMin = aheadMin + lastMin;
   if (totalMin < 3 || totalMin > 240) return { ok: false, reason: 'cooking time not usable' };
 
   const kind = tag.kind === 'side' && totalMin > settings.sideMaxMin ? 'main' : tag.kind;
+  // (Sides must be quick: anything slower is planned as a main.)
   const id = recipeId(raw.url);
   const pop = settings.popularity;
   const popular =
@@ -186,8 +206,8 @@ export function finalise(raw: RawRecipe, tag: TagAnswer, sourceName: string, rul
     ((raw.views ?? 0) >= pop.minViews && (raw.likes ?? 0) >= pop.minLikeRatio * (raw.views ?? 0));
 
   const slim: SlimRecipe = {
-    id, name: raw.name.split(/\s[|–—]\s/)[0].trim(), dishKey: dishKey(raw.name), source: sourceName,
-    cuisine: tag.cuisine, kind, category: tag.category,
+    id, name: cleanName(raw.name), dishKey: dishKey(cleanName(raw.name)), source: sourceName,
+    cuisine: tag.cuisine, kind, category: safeCategory(tag.category, raw),
     utensils: tag.utensils, techniques: tag.techniques.map((t) => t.toLowerCase()), keyIngredients: tag.keyIngredients.map((t) => t.toLowerCase()),
     ingredientNames: tag.ingredients.filter((i) => !i.garnish).map((i) => i.name.toLowerCase()),
     garnish: tag.ingredients.filter((i) => i.garnish).map((i) => i.name.toLowerCase()),

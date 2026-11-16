@@ -22,8 +22,12 @@ Design: https://claude.ai/artifact/BnDvTBxPD39zC2wyjvAahW (copies of the screens
 - Chart/photo reading, recipe tagging, typed restrictions, price refresh: code written, never run against the real API. Expect small fixes on first run (e.g. `output_config.format` shape, web search tool version for Haiku).
 - Recipe site reading: sitemap patterns in `lib/settings.ts` are best guesses; run `npm run library -- read 200` (no AI cost) and check `status` for per-site yield.
 
+## Deployment state (2026-11-16)
+- Vercel: logged in via CLI as `imusad`, project `iman-runners/preppy` created and linked (`.vercel/`). PASSCODE, AUTH_SECRET, CRON_SECRET added to Vercel production env (values in `.env.local`).
+- WAITING ON OWNER: (1) accept Neon terms at https://vercel.com/iman-runners/~/integrations/accept-terms/neon?source=cli then rerun `npx vercel integration add neon`; (2) paste Anthropic key into `.env.local` (ANTHROPIC_API_KEY=).
+- Recipe reader checked with `npm run library -- read`: works for hebbars, tasty, recipetineats, budgetbytes, bbcgoodfood, archanas, ranveer. Swasthi and Serious Eats refuse the app's requests; Bong Eats has no sitemap. Many pages are rejected for "no video".
+
 ## Next up (in order)
-- [ ] Owner: create Anthropic key + YouTube key into `.env.local`; approve `vercel login`
-- [ ] Neon database via Vercel, env vars (ANTHROPIC_API_KEY, PASSCODE, AUTH_SECRET, CRON_SECRET, YOUTUBE_API_KEY, DATABASE_URL), deploy
-- [ ] First library build + price refresh (run from this Mac: `npm run library`)
-- [ ] End-to-end test on the live site, hand over link and passcode; log decisions D-023+ in the PDD
+- [ ] After Neon: `npx vercel env pull`-style check that DATABASE_URL exists in production, add ANTHROPIC_API_KEY to Vercel (`vercel env add`), `npx vercel deploy --prod`
+- [ ] With key: test `/api/chart/upload` locally, fix any API shape errors; `npm run library -- build 300` against Neon first (set DATABASE_URL in `.env.local`), check quality, then full build; `npm run library -- prices`
+- [ ] End-to-end test on the live site; give owner link + passcode; log decisions D-023+ in the PDD; optional GitHub push

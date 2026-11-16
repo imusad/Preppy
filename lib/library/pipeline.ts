@@ -10,6 +10,13 @@ import type { RawRecipe } from '@/lib/library/types';
 import { settings } from '@/lib/settings';
 import type { AllergenId } from '@/lib/types';
 
+const NOT_MEAL = /\b(cake|cookie|cookies|brownie|muffin|cupcake|dessert|pudding|ice cream|kulfi|halwa|ladoo|laddu|barfi|burfi|payasam|kheer|jamun|jalebi|smoothie|milkshake|shake|juice|lassi|cocktail|mocktail|lemonade|tea|chai|coffee|latte|sharbat|frosting|icing|candy|fudge|chocolate|granola|pancake|pancakes|waffle|waffles|jam|syrup|masala powder|spice mix|chutney powder|podi|pickle|achar|cheesecake|tart|donut|doughnut|macaron|truffle|popsicle|sorbet|mousse|custard|cocktails|drink|drinks|biscuit|biscuits|scones|banana bread)\b/i;
+
+/** Obvious sweets, drinks and baking are dropped before any AI is paid for. */
+function notAMeal(r: RawRecipe): boolean {
+  return NOT_MEAL.test(r.name) || /\b(dessert|desserts|drink|drinks|beverage|beverages|baking|sweets|cocktail)\b/i.test(r.categoryHint ?? '');
+}
+
 const sourceName = (id: string) => settings.sources.find((s) => s.id === id)?.name ?? id;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -39,7 +46,8 @@ export async function extractPending(limit: number): Promise<{ extracted: number
       } else {
         failures = 0;
         const res = extractRecipe(page.text, c.url, src.id);
-        if (res.ok) { await setCandidate(c.url, 'extracted', { raw: res.recipe }); extracted++; }
+        if (res.ok && notAMeal(res.recipe)) { await setCandidate(c.url, 'rejected', { reason: 'not a lunch or dinner recipe' }); rejected++; }
+        else if (res.ok) { await setCandidate(c.url, 'extracted', { raw: res.recipe }); extracted++; }
         else { await setCandidate(c.url, 'rejected', { reason: res.reason }); rejected++; }
       }
       await sleep(900);
@@ -54,8 +62,9 @@ export interface TagOutcome { saved: string[]; rejected: number; costUsd: number
 async function settleAndSave(items: { raw: RawRecipe; tag: TagAnswer | null }[], out: TagOutcome): Promise<void> {
   const count = (r: AiResult<unknown>) => { out.costUsd += r.costUsd; out.models[r.model] = (out.models[r.model] ?? 0) + 1; };
 
-  // Sonnet re-tags the ones the first pass marked unsure (or failed on).
-  const redo = items.filter((x) => !x.tag || x.tag.unsure);
+  // Sonnet re-tags only the ones the first pass failed on. Recipes the tagger was unsure about keep
+  // their tags; the safety checks (allergens, diet category) default to the cautious answer.
+  const redo = items.filter((x) => !x.tag);
   const second = await askMany<TagAnswer>(redo.map((x) => tagRequest(x.raw, settings.models.recheck)), 4);
   second.forEach((r, i) => { count(r); if (r.data) redo[i].tag = r.data; });
 

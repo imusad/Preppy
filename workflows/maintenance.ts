@@ -6,17 +6,41 @@ import { kvSet } from '@/lib/db';
 import { checkLinks, collectTagBatch, discover, extractPending, submitTagBatch } from '@/lib/library/pipeline';
 import { finishPrices, priceGroupStep } from '@/lib/library/prices';
 
-async function links() { 'use step'; return checkLinks(150); }
-async function find() { 'use step'; return discover(40); }
-async function read() { 'use step'; return extractPending(150); }
-async function submit() { 'use step'; return submitTagBatch(400); }
-async function collect(batchId: string) { 'use step'; const r = await collectTagBatch(batchId); return r ? { saved: r.saved.length, rejected: r.rejected, costUsd: r.costUsd } : null; }
-async function record(summary: Record<string, unknown>) { 'use step'; await kvSet('library-refresh', { ...summary, at: new Date().toISOString() }); }
-async function priceStep(i: number) { 'use step'; return priceGroupStep(i); }
-async function priceDone() { 'use step'; return finishPrices(); }
+export async function links() {
+  "use step";
+  return checkLinks(150);
+}
+export async function find() {
+  "use step";
+  return discover(40);
+}
+export async function read() {
+  "use step";
+  return extractPending(150);
+}
+export async function submit() {
+  "use step";
+  return submitTagBatch(400);
+}
+export async function collect(batchId: string) {
+  "use step";
+  const r = await collectTagBatch(batchId); return r ? { saved: r.saved.length, rejected: r.rejected, costUsd: r.costUsd } : null;
+}
+export async function record(summary: Record<string, unknown>) {
+  "use step";
+  await kvSet('library-refresh', { ...summary, at: new Date().toISOString() });
+}
+export async function priceStep(i: number) {
+  "use step";
+  return priceGroupStep(i);
+}
+export async function priceDone() {
+  "use step";
+  return finishPrices();
+}
 
 export async function refreshLibrary() {
-  'use workflow';
+  "use workflow";
   let removed = 0;
   for (let i = 0; i < 6; i++) removed += (await links()).removed;
   await find();
@@ -33,7 +57,7 @@ export async function refreshLibrary() {
 }
 
 export async function refreshPriceTable() {
-  'use workflow';
+  "use workflow";
   for (let i = 0; i < PRICE_GROUPS.length; i++) await priceStep(i);
   await priceDone();
 }

@@ -5,17 +5,41 @@ import { sleep } from 'workflow';
 import { deleteHold, setStep, stepBuild, stepCheckTyped, stepFail, stepFinish, stepPrepare, stepTopUp } from '@/lib/run';
 import { settings } from '@/lib/settings';
 
-async function mark(runId: string, step: number) { 'use step'; await setStep(runId, step); }
-async function prepare(runId: string) { 'use step'; await stepPrepare(runId); }
-async function checkTyped(runId: string) { 'use step'; await stepCheckTyped(runId); }
-async function topUp(runId: string) { 'use step'; return stepTopUp(runId); }
-async function build(runId: string) { 'use step'; await stepBuild(runId); }
-async function finish(runId: string) { 'use step'; await stepFinish(runId); }
-async function fail(runId: string, where: string) { 'use step'; await stepFail(runId, where); }
-async function expire(runId: string) { 'use step'; await deleteHold(runId); }
+export async function mark(runId: string, step: number) {
+  "use step";
+  await setStep(runId, step);
+}
+export async function prepare(runId: string) {
+  "use step";
+  await stepPrepare(runId);
+}
+export async function checkTyped(runId: string) {
+  "use step";
+  await stepCheckTyped(runId);
+}
+export async function topUp(runId: string) {
+  "use step";
+  return stepTopUp(runId);
+}
+export async function build(runId: string) {
+  "use step";
+  await stepBuild(runId);
+}
+export async function finish(runId: string) {
+  "use step";
+  await stepFinish(runId);
+}
+export async function fail(runId: string, where: string) {
+  "use step";
+  await stepFail(runId, where);
+}
+export async function expire(runId: string) {
+  "use step";
+  await deleteHold(runId);
+}
 
 export async function generatePlan(runId: string) {
-  'use workflow';
+  "use workflow";
   let where = 'Reading your profiles';
   try {
     await mark(runId, 0);

@@ -96,6 +96,23 @@ export async function refreshPrices(log: (line: string) => void = () => {}): Pro
   return finishPrices();
 }
 
+/** Second pass: look up only the items that still have no price. Existing prices are untouched. */
+export async function fillMissingPrices(have: string[], maxSearches: number, log: (line: string) => void = () => {}): Promise<{ found: number; searches: number; costUsd: number }> {
+  const missing = PRICE_GROUPS.flatMap((g) => g.items).filter((i) => !have.includes(i));
+  let found = 0, searches = 0, costUsd = 0;
+  for (let i = 0; i < missing.length && searches < maxSearches; i += 8) {
+    const items = missing.slice(i, i + 8);
+    let res;
+    try { res = await priceGroup(items, Math.min(8, maxSearches - searches), 'web_search_20260209'); }
+    catch { res = await priceGroup(items, Math.min(8, maxSearches - searches), 'web_search_20250305'); }
+    const got = Object.fromEntries(Object.entries(res.prices).filter(([, v]) => v !== null));
+    await savePrices(got, new Date());
+    found += Object.keys(got).length; searches += res.searches; costUsd += res.costUsd;
+    log(`${Object.keys(got).length}/${items.length} found (${items.filter((x) => !(x in got)).join(', ') || 'none'} still missing), ${searches} searches`);
+  }
+  return { found, searches, costUsd };
+}
+
 /** Is a refresh due (none yet, or the last good one is older than the refresh interval)? */
 export async function priceRefreshDue(): Promise<boolean> {
   const last = await kvGet<{ ok: boolean; at: string }>('price-refresh');

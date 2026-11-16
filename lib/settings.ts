@@ -13,6 +13,8 @@ export const settings = {
     chartReading: str('MODEL_CHART_READING', 'claude-sonnet-5-5'),
     tagging: str('MODEL_TAGGING', 'claude-haiku-5-5'),
     recheck: str('MODEL_RECHECK', 'claude-sonnet-5-5'),
+    /** Second look at allergens where the word list and the tagger disagree. */
+    allergenCheck: str('MODEL_ALLERGEN_CHECK', 'claude-haiku-5-5'),
     prices: str('MODEL_PRICES', 'claude-haiku-5-5'),
   },
   /** US dollars per million tokens: [input, output]. Used for the run cost total. */
@@ -42,7 +44,7 @@ export const settings = {
 
   // ---- Planner rules ----
   days: 14,
-  sideMaxMin: 10,
+  sideMaxMin: num('SIDE_MAX_MIN', 15),
   reheatMin: 5,
   minCuisines: 6,
   maxSameCuisineInARow: 2,
@@ -65,7 +67,7 @@ export const settings = {
   libraryTarget: num('LIBRARY_TARGET', 3000),
   priceCity: 'Bengaluru',
   priceRefreshMonths: 3,
-  priceSearchCap: 120,
+  priceSearchCap: num('PRICE_SEARCH_CAP', 48),
   youtubeDailySearches: 95,
 
   /** Approved recipe sources (INT-3). Remove a line to stop using a site. */
