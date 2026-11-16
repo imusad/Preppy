@@ -42,6 +42,8 @@ export interface Group {
   favCuisines: Set<string>;
   utensils: Set<string>;
   chartAvoid: HealthFlag[];
+  /** A member's chart asks for high or lean protein, or their goal is to build muscle. */
+  wantsProtein: boolean;
   /** Calories one lunch or dinner should provide; null when no chart states a target. */
   mealKcal: number | null;
   aiExcluded: Set<string>;
@@ -93,6 +95,7 @@ export function formGroups(people: Person[], household: Person[], extras: Planne
       favourites,
       favCuisines: new Set(favourites.map((f) => GRID_CUISINE.get(f)).filter((c): c is string => Boolean(c))),
       utensils,
+      wantsProtein: members.some((m) => m.chartAccepted && (m.chart?.recipeTypes ?? []).some((t) => /protein/i.test(t))),
       chartAvoid: [...new Set(members.flatMap((m) => (m.chartAccepted ? (m.chart?.avoid ?? []) : []) as HealthFlag[]))],
       mealKcal: targets.length ? Math.round((targets.reduce((a, b) => a + b, 0) / targets.length) * settings.mealCalorieShare) : null,
       aiExcluded: new Set(members.flatMap((m) => extras.aiExcluded[m.id] ?? [])),
@@ -102,11 +105,43 @@ export function formGroups(people: Person[], household: Person[], extras: Planne
 }
 
 /** Does the recipe's dish name contain every word of the wanted dish? */
+/** Common spellings of the same word, so a typed favourite still finds its dish. */
+const SAME_WORD: Record<string, string> = {
+  beetroot: 'beet', biriyani: 'biryani', biriani: 'biryani', briyani: 'biryani', chilly: 'chilli', chili: 'chilli', chille: 'chilli',
+  hummous: 'hummus', houmous: 'hummus', humus: 'hummus', croissant: 'croissant', pizzas: 'pizza', spagetti: 'spaghetti', tartufo: 'truffle',
+};
+
+export function stemWord(w: string): string {
+  const s = w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w;
+  return SAME_WORD[s] ?? SAME_WORD[w] ?? s;
+}
+
+/** A dish's core name (words before any bracket, stemmed, sorted), to spot near-duplicate recipes. */
+export function coreName(name: string): string {
+  return [...new Set(name.toLowerCase().split('(')[0].replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2 || /\d/.test(w)).map(stemWord))].sort().join(' ');
+}
+
+const PROTEIN = ['chicken', 'mutton', 'lamb', 'goat', 'beef', 'pork', 'turkey', 'fish', 'salmon', 'tuna', 'cod', 'basa', 'prawn', 'shrimp', 'crab', 'egg',
+  'paneer', 'tofu', 'tempeh', 'chickpea', 'chana', 'lentil', 'dal', 'rajma', 'kidney bean', 'black bean', 'white bean', 'bean', 'edamame', 'soya chunk',
+  'halloumi', 'cottage cheese', 'steak', 'mince', 'keema'];
+
+/** Does the dish have a real protein source among its defining ingredients? */
+export function proteinRich(r: SlimRecipe): boolean {
+  return mentions([...r.keyIngredients, r.name.toLowerCase()], PROTEIN);
+}
+
+/** Dishes that are really accompaniments even when tagged as a main. */
+export function sideLike(r: SlimRecipe): boolean {
+  if (/\b(chutney|thogayal|thuvaiyal|pachadi|podi|raita|pickle|achar)\b/i.test(r.name)) return true;
+  if (/\b(salad|slaw|coleslaw|bread|toast|fries|straws|chips|hummus|crisps)\b/i.test(r.name) && !proteinRich(r) && (r.kcal ?? 0) < 400) return true;
+  if (r.kcal !== null && r.kcal < 150) return true;
+  return r.kcal !== null && r.kcal < 180 && !proteinRich(r);
+}
+
 export function sameDish(recipeKey: string, wanted: string): boolean {
   if (!wanted) return false;
-  const stem = (w: string) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w);
-  const have = new Set(recipeKey.split(' ').map(stem));
-  return wanted.split(' ').map(stem).every((w) => have.has(w));
+  const have = new Set(recipeKey.split(' ').map(stemWord));
+  return wanted.split(' ').map(stemWord).every((w) => have.has(w));
 }
 
 export interface Fit { ok: boolean; notes: string[] }
@@ -120,7 +155,7 @@ export function fits(g: Group, r: SlimRecipe): Fit {
   if (g.aiExcluded.has(r.id)) return no;
   if (g.avoidCuisines.has(r.cuisine)) return no;
   // A sauce, dressing or dip on its own is not a dish to serve.
-  if (/\b(sauce|dressing|dip|marinade|seasoning|spice rub|rub|gravy)$/i.test(r.name.replace(/\s*\(.*\)\s*$/, ''))) return no;
+  if (/\b(sauce|dressing|dip|marinade|seasoning|spice rub|rub|gravy)( for [a-z ]+)?$/i.test(r.name.replace(/\s*\(.*\)\s*$/, ''))) return no;
   if (g.least.some((l) => sameDish(r.dishKey, l))) return no;
   const notes: string[] = [];
   for (const rule of g.rules) {

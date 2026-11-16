@@ -71,9 +71,15 @@ describe('the 2-week schedule', () => {
     expect(draft.days[0].dinner).toHaveLength(2);
     expect(dishes(draft).every((d) => d.mainId && d.sideId)).toBe(true);
   });
-  it('never repeats a recipe', () => {
-    const ids = dishes(draft).flatMap((d) => [d.mainId, d.sideId]);
-    expect(new Set(ids).size).toBe(ids.length);
+  it('never repeats a main, and a side only after at least 5 days', () => {
+    const mains = dishes(draft).map((d) => d.mainId);
+    expect(new Set(mains).size).toBe(mains.length);
+    const lastDay = new Map<string, number>();
+    for (const d of draft.days) for (const x of [...d.lunch, ...d.dinner]) {
+      if (!x.sideId) continue;
+      if (lastDay.has(x.sideId)) expect(d.day - (lastDay.get(x.sideId) as number)).toBeGreaterThanOrEqual(5);
+      lastDay.set(x.sideId, d.day);
+    }
   });
   it('gives the same plan for the same setup', () => {
     expect(schedule(input(couple))).toEqual(draft);

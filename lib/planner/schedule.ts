@@ -2,7 +2,7 @@
 // price table always give the same plan.
 import type { FullRecipe, SlimRecipe } from '@/lib/library/types';
 import {
-  breaksChart, costPerServing, familiarTags, fits, formGroups, funFactor, listNames, mealPeople, sameDish,
+  breaksChart, coreName, costPerServing, familiarTags, proteinRich, sideLike, fits, formGroups, funFactor, listNames, mealPeople, sameDish,
   type Group, type PlannerExtras,
 } from '@/lib/planner/groups';
 import { settings } from '@/lib/settings';
@@ -96,8 +96,10 @@ function buildPools(input: PlannerInput): { lunch: GroupPool[]; dinner: GroupPoo
           r, notes: fit.notes, fun: funFactor(group, r, familiar), cost: costPerServing(r, prices),
           isFavourite: group.favourites.some((f) => sameDish(r.dishKey, f)),
         };
-        if (r.kind === 'main') mains.push(c);
-        else if (r.totalMin <= settings.sideMaxMin) sides.push(c);
+        // Light dishes tagged as mains (a melon salad, garlic bread) are served as sides, not as the meal.
+        const asSide = r.kind === 'side' || sideLike(r);
+        if (!asSide) mains.push(c);
+        else if (r.totalMin <= settings.sideMaxMin + 5) sides.push(c);
       }
       const pool = { group, mains, sides };
       // The same group can appear at lunch and dinner with different members; keep the larger one for the bank.
@@ -118,6 +120,11 @@ export function schedule(input: PlannerInput): Draft {
   const eveningWin = setup.household.eveningMin;
   const pools = buildPools(input);
   const used = new Set<string>();
+  /** Core names already served, so two near-identical recipes are not both used. */
+  const usedCore = new Set<string>();
+  /** Side dish id → the last day it was served. Sides may come back after a few days; mains never repeat. */
+  const sideDay = new Map<string, number>();
+  const SIDE_GAP_DAYS = 5;
   const history = new Map<string, GroupHistory>();
   const hist = (g: Group): GroupHistory => {
     let h = history.get(g.key);
@@ -133,7 +140,7 @@ export function schedule(input: PlannerInput): Draft {
       const g = pool.group;
       const h = hist(g);
       const base = { who: g.names, servings: g.servings };
-      const freeSides = pool.sides.filter((s) => !used.has(s.r.id));
+      const freeSides = pool.sides.filter((s) => !used.has(s.r.id) && (sideDay.get(s.r.id) ?? -99) <= day - SIDE_GAP_DAYS);
       const sideReserve = freeSides.length ? Math.min(...freeSides.map((s) => s.r.totalMin)) : 0;
       const sideCostReserve = freeSides.length ? Math.min(...freeSides.map((s) => s.cost ?? 0)) : 0;
 
@@ -144,7 +151,7 @@ export function schedule(input: PlannerInput): Draft {
       const mealNo = h.cuisines.length;
 
       for (const c of pool.mains) {
-        if (used.has(c.r.id)) continue;
+        if (used.has(c.r.id) || usedCore.has(coreName(c.r.name))) continue;
         const r = c.r;
         const timings: { mode: Mode; m: number; e: number }[] =
           meal === 'lunch'
@@ -170,6 +177,7 @@ export function schedule(input: PlannerInput): Draft {
         const outsideFav = !g.favCuisines.has(r.cuisine);
 
         let score = c.fun * 3;
+        if (g.wantsProtein) score += proteinRich(r) ? 12 : -6;
         if (favouriteDue && mealNo - h.lastFavouriteAt >= 3) score += 40;
         if (streak.length === settings.maxSameCuisineInARow && streak.every((x) => x === r.cuisine)) score -= 1000;
         if (h.cuisines[h.cuisines.length - 1] === r.cuisine) score -= 3;
@@ -195,6 +203,7 @@ export function schedule(input: PlannerInput): Draft {
       const chosen = tierA[0] ?? tierB[0] ?? tierC[0];
       const main = chosen.c;
       used.add(main.r.id);
+      usedCore.add(coreName(main.r.name));
 
       // Side: quick, unused, and as compatible as possible.
       let morning = state.morning + chosen.m;
@@ -207,13 +216,17 @@ export function schedule(input: PlannerInput): Draft {
           const over = inEvening ? 0 : Math.max(0, morning + s.r.totalMin - morningWin) - Math.max(0, morning - morningWin);
           const budgetOver = main.cost === null || s.cost === null ? 0 : Math.max(0, main.cost + s.cost - g.budget);
           const match = family(s.r.cuisine) === family(main.r.cuisine) ? 0 : 1;
-          return { s, inEvening, over, budgetOver, match };
+          const chartOk = s.r.healthFlags.some((f) => g.chartAvoid.includes(f)) ? 1 : 0;
+          const dupe = usedCore.has(coreName(s.r.name)) && !sideDay.has(s.r.id) ? 1 : 0;
+          return { s, inEvening, over, budgetOver, match, chartOk, dupe };
         })
-        .sort((a, b) => a.over - b.over || a.budgetOver - b.budgetOver || a.match - b.match || b.s.fun - a.s.fun || (a.s.r.id < b.s.r.id ? -1 : 1));
+        .filter((o) => !o.dupe)
+        .sort((a, b) => a.over - b.over || a.chartOk - b.chartOk || a.budgetOver - b.budgetOver || a.match - b.match || b.s.fun - a.s.fun || (a.s.r.id < b.s.r.id ? -1 : 1));
       if (sideOptions.length) {
         side = sideOptions[0].s;
         sideInEvening = sideOptions[0].inEvening;
-        used.add(side.r.id);
+        sideDay.set(side.r.id, day);
+        usedCore.add(coreName(side.r.name));
         if (sideInEvening) evening += side.r.totalMin; else morning += side.r.totalMin;
       }
 
@@ -224,7 +237,7 @@ export function schedule(input: PlannerInput): Draft {
       const perServing = main.cost === null || (side && side.cost === null) ? null : main.cost + (side?.cost ?? 0);
       if (perServing === null) flags.push(flag('price_unavailable'));
       else if (perServing > g.budget) flags.push(flag('over_budget', perServing - g.budget));
-      if (breaksChart(g, main.r, side?.r.kcal ?? 0)) flags.push(flag('non_compliant'));
+      if (breaksChart(g, main.r, side?.r.kcal ?? 0) || (side && side.r.healthFlags.some((f) => g.chartAvoid.includes(f)))) flags.push(flag('non_compliant'));
 
       const dish: DraftDish = {
         ...base, mainId: main.r.id, sideId: side?.r.id ?? null, mode: chosen.mode,
