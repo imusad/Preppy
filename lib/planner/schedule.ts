@@ -24,6 +24,49 @@ interface GroupPool {
   group: Group;
   mains: Candidate[];
   sides: Candidate[];
+  /** Set on a shared pool: the dish groups it cooks for in one go. */
+  members?: Group[];
+}
+
+/** Keep only candidates every pool can eat, with every member's garnish notes. */
+function intersect(lists: Candidate[][], ok: (c: Candidate) => boolean = () => true): Candidate[] {
+  const maps = lists.map((l) => new Map(l.map((c) => [c.r.id, c])));
+  return lists[0].filter((c) => ok(c) && maps.every((m) => m.has(c.r.id))).map((c) => {
+    const all = maps.map((m) => m.get(c.r.id) as Candidate);
+    return {
+      ...c,
+      notes: [...new Set(all.flatMap((x) => x.notes))],
+      fun: Math.min(...all.map((x) => x.fun)),
+      isFavourite: all.some((x) => x.isFavourite),
+    };
+  });
+}
+
+/**
+ * One dish for everyone at a meal, when it suits all their diets, restrictions and charts.
+ * Uses the higher budget, everyone's favourites and the average calorie target.
+ */
+function sharedPool(pools: GroupPool[]): GroupPool | null {
+  if (pools.length < 2) return null;
+  const gs = pools.map((p) => p.group);
+  const kcals = gs.map((g) => g.mealKcal).filter((k): k is number => k !== null);
+  const group: Group = {
+    ...gs[0],
+    key: 'shared:' + gs.map((g) => g.key).join('+'),
+    names: gs.flatMap((g) => g.names),
+    servings: gs.reduce((n, g) => n + g.servings, 0),
+    budget: Math.max(...gs.map((g) => g.budget)),
+    favourites: [...new Set(gs.flatMap((g) => g.favourites))],
+    favCuisines: new Set(gs.flatMap((g) => [...g.favCuisines])),
+    chartAvoid: [...new Set(gs.flatMap((g) => g.chartAvoid))],
+    wantsProtein: gs.some((g) => g.wantsProtein),
+    mealKcal: kcals.length ? Math.round(kcals.reduce((a, b) => a + b, 0) / kcals.length) : null,
+  };
+  // A shared dish must not break anyone's chart: otherwise they get their own dish.
+  const chartSafe = (c: Candidate) => gs.every((g) => !breaksChart(g, c.r));
+  const mains = intersect(pools.map((p) => p.mains), chartSafe);
+  const sides = intersect(pools.map((p) => p.sides));
+  return { group, mains, sides, members: gs };
 }
 
 interface GroupHistory {
@@ -120,6 +163,8 @@ export function schedule(input: PlannerInput): Draft {
   const eveningWin = setup.household.eveningMin;
   const pools = buildPools(input);
   const used = new Set<string>();
+  const sharedLunch = sharedPool(pools.lunch);
+  const sharedDinner = sharedPool(pools.dinner);
   /** Core names already served, so two near-identical recipes are not both used. */
   const usedCore = new Set<string>();
   /** Side dish id → the last day it was served. Sides may come back after a few days; mains never repeat. */
@@ -138,7 +183,9 @@ export function schedule(input: PlannerInput): Draft {
 
     const pick = (pool: GroupPool, meal: 'lunch' | 'dinner'): DraftDish => {
       const g = pool.group;
-      const h = hist(g);
+      // A shared dish reads the variety history of its first member and writes to all members.
+      const hs = (pool.members ?? [g]).map(hist);
+      const h = hs[0];
       const base = { who: g.names, servings: g.servings };
       const freeSides = pool.sides.filter((s) => !used.has(s.r.id) && (sideDay.get(s.r.id) ?? -99) <= day - SIDE_GAP_DAYS);
       const sideReserve = freeSides.length ? Math.min(...freeSides.map((s) => s.r.totalMin)) : 0;
@@ -253,11 +300,22 @@ export function schedule(input: PlannerInput): Draft {
         g.favourites.filter((f) => sameDish(main.r.dishKey, f)).forEach((f) => h.favouritesDone.add(f));
         h.lastFavouriteAt = h.cuisines.length - 1;
       }
+      for (const other of hs.slice(1)) {
+        other.cuisines.push(main.r.cuisine);
+        if (!g.favCuisines.has(main.r.cuisine)) other.outside++;
+        for (const f of h.favouritesDone) other.favouritesDone.add(f);
+        if (main.isFavourite) other.lastFavouriteAt = other.cuisines.length - 1;
+      }
       return dish;
     };
 
-    const lunch = pools.lunch.map((p) => pick(p, 'lunch'));
-    const dinner = pools.dinner.map((p) => pick(p, 'dinner'));
+    // Cook one dish for everyone when one fits them all; otherwise one dish per group.
+    const mealDishes = (list: GroupPool[], shared: GroupPool | null, meal: 'lunch' | 'dinner'): DraftDish[] => {
+      if (shared && shared.mains.some((c) => !used.has(c.r.id) && !usedCore.has(coreName(c.r.name)))) return [pick(shared, meal)];
+      return list.map((p) => pick(p, meal));
+    };
+    const lunch = mealDishes(pools.lunch, sharedLunch, 'lunch');
+    const dinner = mealDishes(pools.dinner, sharedDinner, 'dinner');
     days.push({ day, lunch, dinner, morningUsed: state.morning, eveningUsed: state.evening });
   }
 

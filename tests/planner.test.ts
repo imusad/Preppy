@@ -30,7 +30,9 @@ describe('dish groups', () => {
     const people = [...diets.map((d, i) => person(`P${i}`, d)), person('P5', 'Vegan', { restrictions: ['allergen:peanuts'] })];
     const d = schedule(input(setupOf(people, { lunchCount: 6, morningMin: 400, eveningMin: 200 })));
     expect(d.groupCount).toBe(6);
-    expect(d.days[0].dinner).toHaveLength(6);
+    // A vegan, peanut-free dish suits all six, so they share one dish.
+    expect(d.days[0].dinner).toHaveLength(1);
+    expect(d.days[0].dinner[0].who).toHaveLength(6);
   });
 });
 
@@ -68,7 +70,8 @@ describe('the 2-week schedule', () => {
   it('fills 14 days with a main and a side per group', () => {
     expect(draft.days).toHaveLength(14);
     expect(draft.days[0].lunch).toHaveLength(1);
-    expect(draft.days[0].dinner).toHaveLength(2);
+    expect(draft.days[0].dinner).toHaveLength(1);
+    expect(draft.days[0].dinner[0].who).toEqual(['Iman', 'Rohan']);
     expect(dishes(draft).every((d) => d.mainId && d.sideId)).toBe(true);
   });
   it('never repeats a main, and a side only after at least 5 days', () => {
@@ -166,5 +169,22 @@ describe('not a dish', () => {
     expect(fits(g, recipe({ id: 'h', name: 'Easy Hollandaise Sauce', kind: 'side' })).ok).toBe(false);
     expect(fits(g, recipe({ id: 'd', name: 'Lemon Tahini Dressing', kind: 'side' })).ok).toBe(false);
     expect(fits(g, recipe({ id: 'p', name: 'Penne in Tomato Sauce with Basil' })).ok).toBe(true);
+  });
+});
+
+describe('shared dishes', () => {
+  it('cooks separate dishes when no dish suits everyone', () => {
+    const lib = [
+      ...Array.from({ length: 30 }, (_, i) => recipe({ id: `v${i}`, name: `Mushroom dish ${i}`, dishKey: `mushroom dish ${i}`, category: 'vegan', ingredientNames: ['mushroom', 'onion'], cuisine: ['Italian', 'Thai', 'Mexican'][i % 3] })),
+      ...Array.from({ length: 30 }, (_, i) => recipe({ id: `m${i}`, name: `Chicken dish ${i}`, dishKey: `chicken dish ${i}`, category: 'meat', ingredientNames: ['chicken'], cuisine: ['Italian', 'Thai', 'Mexican'][i % 3] })),
+    ];
+    const vegan = person('Asha', 'Vegan');
+    const meatEater = person('Ravi', 'Non-vegetarian', { restrictions: ['dislike:mushrooms'] });
+    const d = schedule(input(setupOf([vegan, meatEater], { lunchCount: 2, morningMin: 200, eveningMin: 200 }), lib));
+    expect(d.days[0].lunch).toHaveLength(2);
+  });
+  it('a shared dish uses the higher budget and serves everyone', () => {
+    const d = schedule(input(setupOf([person('Iman', 'Pescatarian'), person('Rohan', 'Non-vegetarian', { budget: 250 })], { lunchCount: 2 })));
+    expect(d.days[0].lunch[0].servings).toBe(2);
   });
 });
