@@ -11,9 +11,10 @@ export interface BankFilters {
   cuisine: string;
   person: string;
   fun: 'Any' | 'Fun 3+' | 'Fun 4+' | 'Fun 5';
+  source: string;
 }
 
-export const NO_FILTERS: BankFilters = { type: 'All', cuisine: 'All', person: 'All', fun: 'Any' };
+export const NO_FILTERS: BankFilters = { type: 'All', cuisine: 'All', person: 'All', fun: 'Any', source: 'All' };
 
 const MIN_FUN: Record<BankFilters['fun'], number> = { Any: 0, 'Fun 3+': 3, 'Fun 4+': 4, 'Fun 5': 5 };
 
@@ -43,16 +44,18 @@ export default function RecipeBank({ plan, filters: f, onFilters, onClose, onOpe
     [plan],
   );
   const cuisines = useMemo(() => Array.from(new Set(all.map((r) => r.cuisine))).sort(), [all]);
+  const sources = useMemo(() => Array.from(new Set(all.map((r) => r.source))).sort(), [all]);
   const list = useMemo(
     () => all
       .filter((r) => (f.type === 'All' || (f.type === 'Main') === (r.kind === 'main'))
         && (f.cuisine === 'All' || r.cuisine === f.cuisine)
         && (f.person === 'All' || r.who.includes(f.person))
+        && (f.source === 'All' || r.source === f.source)
         && r.fun >= MIN_FUN[f.fun])
       .sort((a, b) => b.fun - a.fun || a.name.localeCompare(b.name)),
     [all, f],
   );
-  const filtered = f.type !== 'All' || f.cuisine !== 'All' || f.person !== 'All' || f.fun !== 'Any';
+  const filtered = f.type !== 'All' || f.cuisine !== 'All' || f.person !== 'All' || f.fun !== 'Any' || f.source !== 'All';
   const total = `${all.length} ${all.length === 1 ? 'recipe' : 'recipes'}`;
 
   return (
@@ -68,6 +71,7 @@ export default function RecipeBank({ plan, filters: f, onFilters, onClose, onOpe
           <ChipRow name="Cuisine" options={['All', ...cuisines]} value={f.cuisine} onPick={(cuisine) => onFilters({ ...f, cuisine })} />
           <ChipRow name="Person" options={['All', ...plan.people]} value={f.person} onPick={(person) => onFilters({ ...f, person })} />
           <ChipRow name="Fun factor" options={['Any', 'Fun 3+', 'Fun 4+', 'Fun 5'] as BankFilters['fun'][]} value={f.fun} onPick={(fun) => onFilters({ ...f, fun })} />
+          <ChipRow name="Source" options={['All', ...sources]} value={f.source} onPick={(source) => onFilters({ ...f, source })} />
         </div>
       </header>
       <div className={`${s.scroll} ${s.bankList}`}>
@@ -77,7 +81,7 @@ export default function RecipeBank({ plan, filters: f, onFilters, onClose, onOpe
             <span className={s.rowText}>
               <span className={s.rowName}>{r.name}</span>
               <span className={s.rowLine1}>{r.cuisine} · {r.kind === 'main' ? 'Main' : 'Side'} · {r.totalMin} min · Fun {r.fun}/5</span>
-              <span className={s.small}>For {listNames(r.who) || 'everyone'}</span>
+              <span className={s.small}>From {r.source} · For {listNames(r.who) || 'everyone'}</span>
             </span>
           </button>
         ))}

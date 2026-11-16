@@ -21,8 +21,9 @@ const yesNo = { type: 'string', enum: ['yes', 'no', 'unsure'] };
 const TAG_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['complete', 'unsure', 'cuisine', 'kind', 'category', 'utensils', 'techniques', 'keyIngredients', 'servings', 'kcalPerServing', 'healthFlags', 'allergens', 'ingredients', 'steps'],
+  required: ['englishName', 'complete', 'unsure', 'cuisine', 'kind', 'category', 'utensils', 'techniques', 'keyIngredients', 'servings', 'kcalPerServing', 'healthFlags', 'allergens', 'ingredients', 'steps'],
   properties: {
+    englishName: { type: 'string' },
     complete: { type: 'boolean' },
     unsure: { type: 'boolean' },
     cuisine: { type: 'string', enum: [...CUISINES] },
@@ -66,6 +67,8 @@ const TAG_SYSTEM = `You tag real recipes for a household meal planner in India. 
 
 Fill every field:
 
+- englishName: the dish name in plain English for an English-speaking reader. Keep a well-known dish name and add a short English description in brackets when the name alone would not be understood, for example "Palak Paneer (Spinach and Cottage Cheese Curry)", "Cluster Beans Stir-Fry (Gavar Phali Sabzi)". No Hindi or other non-Latin script, no site or author name, no words like "recipe", "easy" or "best". Use title case.
+
 - complete: false if this is not a cookable lunch or dinner recipe with real ingredients and steps (for example a drink, dessert, breakfast-only item, snack, baking project, spice mix, round-up article, or steps too thin to cook from).
 - unsure: true if you had to guess at any tag that affects safety or scheduling (category, allergens, the ahead/last split, times).
 - cuisine: the closest listed cuisine. Goan, Gujarati, Maharashtrian, Punjabi street food and so on go under the nearest Indian choice or "Other Indian". Chinese-style dishes cooked the Indian way are "Indo-Chinese". Anything else is "Other".
@@ -82,6 +85,7 @@ Fill every field:
 - steps: one entry per step, in the same order as given. when is "last" for anything that must happen just before eating: frying or crisping, tempering (tadka), searing fish or meat, stir-frying, dressing a salad, adding fresh herbs or garnish, making rotis or dosas, cooking pasta or noodles, anything "serve immediately". Everything else (chopping, marinating, making a base or gravy, cooking rice or dal, pressure cooking) is "ahead". min is the hands-on and cooking minutes for that step; leave out unattended soaking, marinating, resting or chilling time.`;
 
 export interface TagAnswer {
+  englishName?: string;
   complete: boolean;
   unsure: boolean;
   cuisine: string;
@@ -150,8 +154,9 @@ function round(n: number, places = 2): number {
   return Math.round(n * f) / f;
 }
 
-const MEAT_TERMS = ['chicken', 'mutton', 'lamb', 'beef', 'pork', 'bacon', 'ham', 'turkey', 'duck', 'sausage', 'salami', 'pepperoni', 'chorizo', 'prosciutto', 'pancetta', 'keema', 'kheema', 'gosht', 'murgh', 'meat', 'steak', 'veal', 'venison', 'goat', 'lard', 'gelatin', 'gelatine', 'bone broth', 'meatball'];
-const MEAT_EXCEPT = ['vegan', 'vegetarian', 'meatless', 'mock meat', 'soya', 'soy ', 'plant-based', 'plant based', 'jackfruit', 'coconut meat', 'hamburger bun', 'duck sauce'];
+const MEAT_TERMS = ['chicken', 'mutton', 'lamb', 'beef', 'pork', 'bacon', 'ham', 'turkey', 'duck', 'sausage', 'salami', 'pepperoni', 'chorizo', 'prosciutto', 'pancetta', 'keema', 'kheema', 'gosht', 'murgh', 'meat', 'steak', 'veal', 'venison', 'goat', 'lard', 'gelatin', 'gelatine', 'bone broth', 'meatball', 'mince', 'qeema'];
+// Phrases cut out of the text before matching (not whole lines skipped).
+const MEAT_EXCEPT = ['vegan sausage', 'vegetarian sausage', 'vegan chicken', 'mock meat', 'meatless', 'soya chunk', 'soya mince', 'soy chunk', 'soy mince', 'plant-based meat', 'plant based meat', 'jackfruit', 'coconut meat', 'hamburger bun', 'duck sauce', 'vegetarian meatball', 'vegan meatball', 'veggie mince'];
 const RANK: Record<FoodCategory, number> = { vegan: 0, vegetarian: 1, egg: 2, fish: 3, meat: 4 };
 
 /** Plain-code second check of the diet category: the more restrictive of the tagger's answer and the word list wins. */
@@ -159,11 +164,17 @@ function safeCategory(tagged: FoodCategory, raw: RawRecipe): FoodCategory {
   const lines = raw.ingredientLines.map((l) => l.toLowerCase());
   const found = new Set(scanAllergens(lines));
   let words: FoodCategory = 'vegan';
-  if (found.has('milk')) words = 'vegetarian';
+  if (found.has('milk') || mentions(lines, ['honey', 'shahad', 'madhu'], ['vegan honey', 'honey substitute'])) words = 'vegetarian';
   if (found.has('eggs')) words = 'egg';
   if (found.has('fish') || found.has('crustaceans') || found.has('molluscs')) words = 'fish';
-  if (lines.some((l) => !MEAT_EXCEPT.some((e) => l.includes(e)) && mentions([l], MEAT_TERMS))) words = 'meat';
+  if (mentions([raw.name.toLowerCase(), ...lines], MEAT_TERMS, MEAT_EXCEPT)) words = 'meat';
   return RANK[words] > RANK[tagged] ? words : tagged;
+}
+
+/** Matching words from both the English name and the original page title, so favourites match either. */
+export function bothKeys(english: string, original: string): string {
+  const words = `${dishKey(english.replace(/[()]/g, ' '))} ${dishKey(cleanName(original))}`.split(' ').filter(Boolean);
+  return [...new Set(words)].join(' ');
 }
 
 export type Finalised = { ok: true; slim: SlimRecipe; full: FullRecipe } | { ok: false; reason: string };
@@ -174,9 +185,9 @@ export type Finalised = { ok: true; slim: SlimRecipe; full: FullRecipe } | { ok:
  */
 export function finalise(raw: RawRecipe, tag: TagAnswer, sourceName: string, ruling: Partial<Record<AllergenId, 'yes' | 'no' | 'unsure'>> = {}): Finalised {
   if (!tag.complete || tag.kind === 'neither') return { ok: false, reason: 'not a lunch or dinner recipe' };
-  if (tag.steps.length === 0) return { ok: false, reason: 'steps could not be matched' };
-  // If the tagger merged or split steps, extra page steps take the timing of the last tagged step.
-  const stepTag = (i: number) => tag.steps[i] ?? { when: tag.steps[tag.steps.length - 1].when, min: 0 };
+  // Timings are lined up with the page's steps one to one; a different count would give wrong times.
+  if (tag.steps.length !== raw.stepLines.length) return { ok: false, reason: 'steps could not be matched' };
+  const stepTag = (i: number) => tag.steps[i];
   const servings = Math.max(1, tag.servings || raw.servings || 2);
 
   const words = new Set(scanAllergens([raw.name, ...raw.ingredientLines]));
@@ -206,7 +217,7 @@ export function finalise(raw: RawRecipe, tag: TagAnswer, sourceName: string, rul
     ((raw.views ?? 0) >= pop.minViews && (raw.likes ?? 0) >= pop.minLikeRatio * (raw.views ?? 0));
 
   const slim: SlimRecipe = {
-    id, name: cleanName(raw.name), dishKey: dishKey(cleanName(raw.name)), source: sourceName,
+    id, name: cleanName(tag.englishName || raw.name), dishKey: bothKeys(tag.englishName ?? '', raw.name), source: sourceName,
     cuisine: tag.cuisine, kind, category: safeCategory(tag.category, raw),
     utensils: tag.utensils, techniques: tag.techniques.map((t) => t.toLowerCase()), keyIngredients: tag.keyIngredients.map((t) => t.toLowerCase()),
     ingredientNames: tag.ingredients.filter((i) => !i.garnish).map((i) => i.name.toLowerCase()),

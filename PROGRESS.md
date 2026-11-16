@@ -22,12 +22,20 @@ Design: https://claude.ai/artifact/BnDvTBxPD39zC2wyjvAahW (copies of the screens
 - Chart/photo reading, recipe tagging, typed restrictions, price refresh: code written, never run against the real API. Expect small fixes on first run (e.g. `output_config.format` shape, web search tool version for Haiku).
 - Recipe site reading: sitemap patterns in `lib/settings.ts` are best guesses; run `npm run library -- read 200` (no AI cost) and check `status` for per-site yield.
 
-## Deployment state (2026-11-16)
-- Vercel: logged in via CLI as `imusad`, project `iman-runners/preppy` created and linked (`.vercel/`). PASSCODE, AUTH_SECRET, CRON_SECRET added to Vercel production env (values in `.env.local`).
-- WAITING ON OWNER: (1) accept Neon terms at https://vercel.com/iman-runners/~/integrations/accept-terms/neon?source=cli then rerun `npx vercel integration add neon`; (2) paste Anthropic key into `.env.local` (ANTHROPIC_API_KEY=).
-- Recipe reader checked with `npm run library -- read`: works for hebbars, tasty, recipetineats, budgetbytes, bbcgoodfood, archanas, ranveer. Swasthi and Serious Eats refuse the app's requests; Bong Eats has no sitemap. Many pages are rejected for "no video".
+## Live (2026-11-16)
+- Site: https://preppy-woad.vercel.app (Vercel project `iman-runners/preppy`, functions in iad1 next to the Neon database in us-east-1). Passcode is in `.env.local` (PASSCODE) and in Vercel env.
+- Verified on the live site: passcode gate, chart upload read by AI, chart from body details, dish search, full plan run (about 90 s), collect plan.
+- Deploy with `npx vercel deploy --prod --yes`. Logs: `npx vercel logs --since 10m`.
+- Library: `npm run library -- status | build <target> <maxUsd> | prices | prices-fill <searches> | tidy`. Scripts import `scripts/net.ts` because the owner's network DNS refuses neon.tech lookups.
+- Price table: 88 of 91 items (cauliflower, green beans, pork missing). "stock or broth" manually set to 60/litre.
 
-## Next up (in order)
-- [ ] After Neon: `npx vercel env pull`-style check that DATABASE_URL exists in production, add ANTHROPIC_API_KEY to Vercel (`vercel env add`), `npx vercel deploy --prod`
-- [ ] With key: test `/api/chart/upload` locally, fix any API shape errors; `npm run library -- build 300` against Neon first (set DATABASE_URL in `.env.local`), check quality, then full build; `npm run library -- prices`
-- [ ] End-to-end test on the live site; give owner link + passcode; log decisions D-023+ in the PDD; optional GitHub push
+## Lessons (do not repeat)
+- Workflow step functions must be exported and written multi-line with `"use step";` on its own line, or they are not registered in the deployed flow function (works in dev, fails on Vercel).
+- Sonnet re-tagging made the library cost $0.035 per recipe; Haiku-only with cautious defaults is about $0.002. Owner has only $5 of API credit: always pass a spending cap.
+- Recipe sites: Swasthi and Serious Eats refuse requests, Bong Eats has no sitemap. About 25% of pages become recipes (most rejections: no video).
+
+## Still to do
+- [ ] Run `npm run library -- tidy` after any build (cleans names), then spot-check a live plan
+- [ ] Not yet tested with a real person: photo-based chart, typed "Other" restrictions, ZIP/HTML export in a phone browser
+- [ ] Log decisions in the PDD (Neon instead of Upstash, browser-side exports, 12 runs/day limit, Haiku-only tagging, library size ~400 not 3,000, side dishes up to 15 min)
+- [ ] Optional: YouTube API key (YOUTUBE_API_KEY) for favourite-dish top-up; GitHub push; monthly refresh cron is wired but untested

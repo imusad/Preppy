@@ -1,4 +1,5 @@
 // Diet chart from body details: plain calculation, no AI (PDD MMP-BE-S2, REG-1, REG-2).
+import { BODY_RANGES } from '@/components/setup/chart';
 import type { BodyDetails, Chart, Goal, Pregnancy } from '@/lib/types';
 import type { HealthFlag } from '@/lib/settings';
 
@@ -83,9 +84,9 @@ export function chartFromBody(d: BodyDetails, source: 'body' | 'photo' = 'body')
 
 export function validBody(d: Partial<BodyDetails>): d is BodyDetails {
   return (
-    typeof d.age === 'number' && d.age >= 2 && d.age <= 110 &&
-    typeof d.heightCm === 'number' && d.heightCm >= 60 && d.heightCm <= 250 &&
-    typeof d.weightKg === 'number' && d.weightKg >= 10 && d.weightKg <= 300 &&
+    typeof d.age === 'number' && d.age >= BODY_RANGES.age[0] && d.age <= BODY_RANGES.age[1] &&
+    typeof d.heightCm === 'number' && d.heightCm >= BODY_RANGES.heightCm[0] && d.heightCm <= BODY_RANGES.heightCm[1] &&
+    typeof d.weightKg === 'number' && d.weightKg >= BODY_RANGES.weightKg[0] && d.weightKg <= BODY_RANGES.weightKg[1] &&
     (d.sex === 'Female' || d.sex === 'Male') &&
     typeof d.activity === 'string' && d.activity in ACTIVITY_FACTOR &&
     typeof d.goal === 'string' && d.goal in GOAL_RULES &&

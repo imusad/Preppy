@@ -4,7 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { anthropic, costOf } from '@/lib/ai';
 import { kvGet, kvSet } from '@/lib/db';
 import { PRICE_GROUPS } from '@/lib/data/priceItems';
-import { savePrices } from '@/lib/library/store';
+import { loadPrices, savePrices } from '@/lib/library/store';
 import { settings } from '@/lib/settings';
 
 const SYSTEM = `You find current retail grocery prices in ${settings.priceCity}, India, for a household meal planner.
@@ -32,7 +32,8 @@ async function priceGroup(items: string[], maxSearches: number, toolType: string
     messages.push({ role: 'assistant', content: res.content });
   }
   const m = text.match(/```json\s*([\s\S]*?)```/) ?? text.match(/(\{[\s\S]*\})/);
-  const parsed = m ? (JSON.parse(m[1]) as Record<string, unknown>) : {};
+  let parsed: Record<string, unknown> = {};
+  try { if (m) parsed = JSON.parse(m[1]) as Record<string, unknown>; } catch { /* malformed reply: no prices from it, cost still counted */ }
   const prices: Record<string, number | null> = {};
   for (const item of items) {
     const v = parsed[item];
@@ -104,19 +105,25 @@ export async function fillMissingPrices(have: string[], maxSearches: number, log
     const items = missing.slice(i, i + 8);
     let res;
     try { res = await priceGroup(items, Math.min(8, maxSearches - searches), 'web_search_20260209'); }
-    catch { res = await priceGroup(items, Math.min(8, maxSearches - searches), 'web_search_20250305'); }
+    catch (err) {
+      if (!(err instanceof Anthropic.BadRequestError)) throw err;
+      res = await priceGroup(items, Math.min(8, maxSearches - searches), 'web_search_20250305');
+    }
     const got = Object.fromEntries(Object.entries(res.prices).filter(([, v]) => v !== null));
     await savePrices(got, new Date());
     found += Object.keys(got).length; searches += res.searches; costUsd += res.costUsd;
     log(`${Object.keys(got).length}/${items.length} found (${items.filter((x) => !(x in got)).join(', ') || 'none'} still missing), ${searches} searches`);
   }
+  const priced = Object.keys((await loadPrices()).prices).length;
+  if (found > 0 && priced >= TOTAL / 2) await kvSet('price-refresh', { ok: true, priced, total: TOTAL, searches, costUsd, at: new Date().toISOString() });
   return { found, searches, costUsd };
 }
 
 /** Is a refresh due (none yet, or the last good one is older than the refresh interval)? */
 export async function priceRefreshDue(): Promise<boolean> {
   const last = await kvGet<{ ok: boolean; at: string }>('price-refresh');
-  if (!last || !last.ok) return true;
-  const months = (Date.now() - new Date(last.at).getTime()) / (30 * 86400_000);
-  return months >= settings.priceRefreshMonths;
+  if (!last) return true;
+  // A failed refresh is retried after a month at the earliest, never every night (each attempt costs money).
+  const days = (Date.now() - new Date(last.at).getTime()) / 86400_000;
+  return last.ok ? days >= settings.priceRefreshMonths * 30 : days >= 30;
 }

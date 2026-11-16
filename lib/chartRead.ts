@@ -65,6 +65,8 @@ interface ChartAnswer {
 export async function readChartFile(name: string, type: string, bytes: Buffer): Promise<{ result: ChartUploadResult; costUsd: number }> {
   const kind = fileKind(name, type);
   if (!kind || bytes.length === 0) return { result: { status: 'unreadable' }, costUsd: 0 };
+  // Very large files would cost a large share of the AI credit; a diet chart is never this big.
+  if (kind === 'pdf' && bytes.length > 3_000_000) return { result: { status: 'unreadable' }, costUsd: 0 };
 
   const content: Anthropic.ContentBlockParam[] = [];
   if (kind === 'pdf') {
@@ -73,7 +75,7 @@ export async function readChartFile(name: string, type: string, bytes: Buffer): 
     content.push({ type: 'image', source: { type: 'base64', media_type: imageType(name, type), data: bytes.toString('base64') } });
   } else {
     const text = bytes.toString('utf8').replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-    if (text.length < 40) return { result: { status: 'unreadable' }, costUsd: 0 };
+    if (text.length < 40 || text.length > 30000) return { result: { status: 'unreadable' }, costUsd: 0 };
     content.push({ type: 'text', text: `<diet_chart>\n${text}\n</diet_chart>` });
   }
   content.push({ type: 'text', text: 'Read this diet chart.' });

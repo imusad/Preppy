@@ -346,11 +346,15 @@ export function assemble(
 
   const counts: Record<FlagKind, number> = { non_compliant: 0, over_time: 0, over_budget: 0, no_recipe: 0, price_unavailable: 0 };
   const weekCost: [number | null, number | null] = [null, null];
+  const weekCostPartial: [boolean, boolean] = [false, false];
   for (const day of days) {
     for (const meal of [day.lunch, day.dinner]) {
       const kinds = new Set(meal.dishes.flatMap((x) => x.flags.map((f) => f.kind)));
       kinds.forEach((k) => counts[k]++);
-      for (const dish of meal.dishes) if (dish.cost !== null) weekCost[day.week - 1] = (weekCost[day.week - 1] ?? 0) + dish.cost;
+      for (const dish of meal.dishes) {
+        if (dish.cost !== null) weekCost[day.week - 1] = (weekCost[day.week - 1] ?? 0) + dish.cost;
+        else if (dish.mainId) weekCostPartial[day.week - 1] = true;
+      }
     }
   }
 
@@ -359,7 +363,7 @@ export function assemble(
   return {
     id: meta.id, createdAt: meta.createdAt, days, recipes,
     bankIds: Object.keys(recipes).sort((a, b) => (recipes[a].name < recipes[b].name ? -1 : 1)),
-    weekCost, pricesChecked: meta.pricesChecked,
+    weekCost, weekCostPartial, pricesChecked: meta.pricesChecked,
     priceNote: meta.pricesChecked && city !== settings.priceCity ? `Prices from ${settings.priceCity}` : null,
     counts, people: setup.people.map((p) => p.name), lunchWho: who.lunch.map((p) => p.name), dinnerWho: who.dinner.map((p) => p.name),
   };

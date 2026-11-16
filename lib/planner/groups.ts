@@ -15,6 +15,8 @@ export interface TypedRule {
   terms: string[];
   /** Word for the garnish note, e.g. "onion". */
   noun: string;
+  /** Whole cuisines this entry rules out, e.g. "no Indian spices" → the Indian cuisines. */
+  avoidCuisines?: string[];
 }
 
 export interface PlannerExtras {
@@ -43,6 +45,7 @@ export interface Group {
   /** Calories one lunch or dinner should provide; null when no chart states a target. */
   mealKcal: number | null;
   aiExcluded: Set<string>;
+  avoidCuisines: Set<string>;
 }
 
 const GRID_CUISINE = new Map(DISH_GRID.flatMap((g) => g.items.map((d) => [dishKey(d.name), g.cuisine] as const)));
@@ -66,7 +69,7 @@ export function formGroups(people: Person[], household: Person[], extras: Planne
     byKey.set(k, [...(byKey.get(k) ?? []), p]);
   }
   // One kitchen: a utensil anyone in the household owns is available to every dish.
-  const utensils = new Set(household.flatMap((p) => p.utensils));
+  const utensils = new Set(household.flatMap((p) => p.utensils).filter((u) => u !== 'none'));
   return [...byKey.entries()].map(([key, members]) => {
     const first = members[0];
     const names = members.map((m) => m.name);
@@ -93,6 +96,7 @@ export function formGroups(people: Person[], household: Person[], extras: Planne
       chartAvoid: [...new Set(members.flatMap((m) => (m.chartAccepted ? (m.chart?.avoid ?? []) : []) as HealthFlag[]))],
       mealKcal: targets.length ? Math.round((targets.reduce((a, b) => a + b, 0) / targets.length) * settings.mealCalorieShare) : null,
       aiExcluded: new Set(members.flatMap((m) => extras.aiExcluded[m.id] ?? [])),
+      avoidCuisines: new Set((extras.typed[first.id] ?? []).flatMap((rule) => rule.avoidCuisines ?? [])),
     };
   });
 }
@@ -114,6 +118,7 @@ export function fits(g: Group, r: SlimRecipe): Fit {
   if (r.utensils.some((u) => !g.utensils.has(u))) return no;
   if (g.allergens.some((a) => r.allergens.includes(a) || r.allergenUnsure.includes(a))) return no;
   if (g.aiExcluded.has(r.id)) return no;
+  if (g.avoidCuisines.has(r.cuisine)) return no;
   if (g.least.some((l) => sameDish(r.dishKey, l))) return no;
   const notes: string[] = [];
   for (const rule of g.rules) {

@@ -6,7 +6,7 @@ import type { Activity, Chart, Goal, Person, Pregnancy, Sex } from '@/lib/types'
 import { ACTIVITIES, CONDITIONS, GOALS, PREGNANCY, REGIONS, SEXES } from '@/lib/data/catalog';
 import { chartFromBody, chartFromPhoto, readChart } from '@/lib/client/api';
 import {
-  UNREADABLE_MESSAGE, UPLOAD_ACCEPT, acceptedLine, chartView, draftMissing, isChartFile, photoUnusableMessage,
+  BODY_RANGES, UNREADABLE_MESSAGE, UPLOAD_ACCEPT, acceptedLine, chartView, draftMissing, isChartFile, photoUnusableMessage,
   readDraft, sourceLine, summaryLines, toBodyDetails, toPhotoDetails,
 } from './chart';
 import type { ChartDraft, DraftField } from './chart';
@@ -68,6 +68,12 @@ export default function ChartPanel(props: {
     e.target.value = '';
     if (!file) return;
     if (!isChartFile(file)) { reopen({ step: 'unreadable' }); return; }
+    // Photos are shrunk before upload; other files over the server's limit are stopped here with a clear reason.
+    if (file.type !== 'image/png' && file.type !== 'image/jpeg' && file.size > 4_000_000) {
+      setNetError('This file is too large (over 4 MB). Upload a smaller PDF, or a photo of the chart.');
+      return;
+    }
+    setNetError(null);
     setBusy('Reading ' + file.name + '…');
     try {
       const res = await readChart(file);
@@ -124,9 +130,9 @@ export default function ChartPanel(props: {
   }
 
   const typed = (field: 'age' | 'heightCm' | 'weightKg', label: string, unit: string) => (
-    <Field inputId={uid + field} label={label} unit={unit} missing={gaps.has(field)} req="Required">
+    <Field inputId={uid + field} label={label} unit={unit} missing={gaps.has(field)} req={draft[field].trim() ? `Enter ${BODY_RANGES[field][0]} to ${BODY_RANGES[field][1]} ${unit}` : 'Required'}>
       <input
-        id={uid + field} type="number" inputMode="numeric" min={1} required aria-invalid={gaps.has(field) || undefined}
+        id={uid + field} type="number" inputMode="numeric" min={BODY_RANGES[field][0]} max={BODY_RANGES[field][1]} required aria-invalid={gaps.has(field) || undefined}
         value={draft[field]} onChange={(e) => setDraft({ [field]: e.target.value })}
       />
     </Field>

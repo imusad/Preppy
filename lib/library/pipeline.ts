@@ -59,12 +59,20 @@ export async function extractPending(limit: number): Promise<{ extracted: number
 export interface TagOutcome { saved: string[]; rejected: number; costUsd: number; models: Record<string, number> }
 
 /** Second opinion, allergen ruling and saving for recipes that already have first-pass tags. */
-async function settleAndSave(items: { raw: RawRecipe; tag: TagAnswer | null }[], out: TagOutcome): Promise<void> {
+/** Worst case for one Sonnet re-tag call, used to keep re-tagging inside a spending limit. */
+const RETAG_USD = 0.065;
+
+async function settleAndSave(all: { raw: RawRecipe; tag: TagAnswer | null }[], out: TagOutcome, maxRetagUsd = Infinity): Promise<void> {
   const count = (r: AiResult<unknown>) => { out.costUsd += r.costUsd; out.models[r.model] = (out.models[r.model] ?? 0) + 1; };
 
   // Sonnet re-tags only the ones the first pass failed on. Recipes the tagger was unsure about keep
   // their tags; the safety checks (allergens, diet category) default to the cautious answer.
-  const redo = items.filter((x) => !x.tag);
+  const failed = all.filter((x) => !x.tag);
+  const cap = Math.max(0, Math.min(20, Math.floor(maxRetagUsd / RETAG_USD)));
+  const redo = failed.slice(0, cap);
+  // Beyond the spending limit, failed pages go back in the queue for another time instead of being re-tagged now.
+  for (const x of failed.slice(cap)) await setCandidate(x.raw.url, 'extracted');
+  const items = all.filter((x) => x.tag || redo.includes(x));
   const second = await askMany<TagAnswer>(redo.map((x) => tagRequest(x.raw, settings.models.recheck)), 4);
   second.forEach((r, i) => { count(r); if (r.data) redo[i].tag = r.data; });
 
@@ -89,18 +97,18 @@ async function settleAndSave(items: { raw: RawRecipe; tag: TagAnswer | null }[],
 }
 
 /** Stage 3 (live): tag these pages now and save the good ones. Used by the first build and by top-up. */
-export async function tagNow(raws: RawRecipe[], concurrency = 6): Promise<TagOutcome> {
+export async function tagNow(raws: RawRecipe[], concurrency = 6, maxRetagUsd = Infinity): Promise<TagOutcome> {
   const out: TagOutcome = { saved: [], rejected: 0, costUsd: 0, models: {} };
   if (raws.length === 0) return out;
   const first = await askMany<TagAnswer>(raws.map((r) => tagRequest(r)), concurrency);
   first.forEach((r) => { out.costUsd += r.costUsd; out.models[r.model] = (out.models[r.model] ?? 0) + 1; });
-  await settleAndSave(raws.map((raw, i) => ({ raw, tag: first[i].data })), out);
+  await settleAndSave(raws.map((raw, i) => ({ raw, tag: first[i].data })), out, maxRetagUsd - out.costUsd);
   return out;
 }
 
-export async function tagPending(limit: number, concurrency = 6): Promise<TagOutcome> {
+export async function tagPending(limit: number, concurrency = 6, maxRetagUsd = Infinity): Promise<TagOutcome> {
   const todo = await takeCandidates('extracted', limit);
-  return tagNow(todo.map((c) => c.raw).filter((r): r is RawRecipe => r !== null), concurrency);
+  return tagNow(todo.map((c) => c.raw).filter((r): r is RawRecipe => r !== null), concurrency, maxRetagUsd);
 }
 
 /** Stage 3 (batch, half price): hand pending pages to Anthropic's batch service. Returns the batch id. */
@@ -110,7 +118,8 @@ export async function submitTagBatch(limit: number): Promise<string | null> {
   const batch = await anthropic().messages.batches.create({
     requests: todo.map((c) => ({ custom_id: recipeId(c.url), params: buildParams(tagRequest(c.raw as RawRecipe)) })),
   });
-  for (const c of todo) await setCandidate(c.url, 'batched', { batchId: batch.id });
+  // One statement, so a retried step cannot leave some pages marked and others not.
+  await q(`update candidates set state = 'batched', batch_id = $2, updated_at = now() where url = any($1)`, [todo.map((c) => c.url), batch.id]);
   return batch.id;
 }
 
@@ -130,7 +139,7 @@ export async function collectTagBatch(batchId: string): Promise<TagOutcome | nul
       out.costUsd += costOf(settings.models.tagging, entry.result.message.usage) / 2;
       items.push({ raw, tag: parseAnswer<TagAnswer>(entry.result.message) });
     } else {
-      items.push({ raw, tag: null });
+      await setCandidate(raw.url, 'extracted'); // errored or expired: back in the queue for the next batch
     }
   }
   out.models[settings.models.tagging] = items.length;

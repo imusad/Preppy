@@ -124,3 +124,32 @@ describe('the 2-week schedule', () => {
     expect(d.gaps.wanted).toEqual(['pav bhaji']);
   });
 });
+
+describe('typed restrictions that rule out a cuisine', () => {
+  it('"no Indian spices" keeps every Indian-cuisine recipe out of the plan', () => {
+    const p = person('Iman', 'Vegan', { restrictions: [], otherRestrictions: ['No Indian spices'] });
+    const indian = ['North Indian', 'South Indian', 'Bengali', 'Other Indian'];
+    const extras = { typed: { iman: [{ text: 'No Indian spices', strict: false, terms: ['garam masala'], noun: 'Indian spices', avoidCuisines: indian }] }, aiExcluded: {} };
+    const lib = new Map(library().map((r) => [r.id, r]));
+    const d = schedule({ setup: setupOf([p]), recipes: library(), prices: PRICES, extras });
+    const cuisines = dishes(d).flatMap((x) => [x.mainId, x.sideId]).filter(Boolean).map((id) => lib.get(id as string)!.cuisine);
+    expect(cuisines.length).toBeGreaterThan(0);
+    expect(cuisines.some((c) => indian.includes(c))).toBe(false);
+  });
+});
+
+describe('word-list safety checks', () => {
+  it('finds anchovies, soybeans, shellfish and yolks', async () => {
+    const { scanAllergens } = await import('@/lib/library/wordlist');
+    expect(scanAllergens(['4 anchovy fillets'])).toContain('fish');
+    expect(scanAllergens(['anchovies, chopped'])).toContain('fish');
+    expect(scanAllergens(['1 cup soybeans'])).toContain('soy');
+    expect(scanAllergens(['mixed seafood'])).toEqual(expect.arrayContaining(['crustaceans', 'molluscs']));
+    expect(scanAllergens(['2 egg yolks'])).toContain('eggs');
+  });
+  it('"No pork" catches lardons and mortadella', () => {
+    const [g] = formGroups([person('A', 'Non-vegetarian', { restrictions: ['avoid:pork'] })], [person('A', 'Non-vegetarian')], none);
+    expect(fits(g, recipe({ id: 'l', category: 'meat', ingredientNames: ['smoked lardons'] })).ok).toBe(false);
+    expect(fits(g, recipe({ id: 'm', category: 'meat', ingredientNames: ['mortadella'] })).ok).toBe(false);
+  });
+});

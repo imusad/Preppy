@@ -5,7 +5,7 @@ import type { Household, Setup } from '@/lib/types';
 import { CITIES } from '@/lib/data/catalog';
 import { CityIcon } from './icons';
 import { Field, Group, StatusTag, Tiles, toInt } from './parts';
-import { anchorId, householdMissing, mealForLine } from './validate';
+import { anchorId, householdMissing, MAX_PEOPLE, mealForLine } from './validate';
 import s from './Setup.module.css';
 
 const CITY_OPTIONS = CITIES.map((c) => ({ key: c, label: c, grey: c === 'Other' }));
@@ -20,8 +20,7 @@ export default function HouseholdSection(props: {
   const uid = useId();
   const missing = householdMissing(setup).filter((f) => f !== 'people');
   const isMissing = (f: string) => showMissing && missing.some((m) => m === f);
-  const n = setup.people.length;
-  const range = n <= 1 ? 'Enter 1' : 'Enter a number from 1 to ' + n;
+  const range = 'Enter a number from 1 to ' + MAX_PEOPLE;
 
   const minutes = (field: 'morningMin' | 'eveningMin', label: string) => (
     <Field
@@ -48,7 +47,7 @@ export default function HouseholdSection(props: {
         helper={mealForLine(meal, v, setup.people) || undefined}
       >
         <input
-          id={uid + field} type="number" inputMode="numeric" min={1} max={Math.max(1, n)} required
+          id={uid + field} type="number" inputMode="numeric" min={1} max={MAX_PEOPLE} required
           aria-invalid={isMissing(field) || outOfRange || undefined}
           value={v ?? ''}
           onChange={(e) => onChange({ [field]: toInt(e.target.value) })}

@@ -85,11 +85,11 @@ describe('missingItems', () => {
     expect(missingItems(s).map((m) => m.field)).toEqual(['chart']);
   });
 
-  it('needs meal counts between 1 and the number of people', () => {
+  it('needs meal counts of at least 1, and a profile for everyone counted', () => {
     const s = fullSetup();
     s.household.lunchCount = 2;
     s.household.dinnerCount = 0;
-    expect(missingItems(s).map((m) => m.field)).toEqual(['lunchCount', 'dinnerCount']);
+    expect(missingItems(s).map((m) => m.field)).toEqual(['dinnerCount', 'people']);
   });
 
   it('accepts None and typed entries as answers', () => {
@@ -177,7 +177,27 @@ describe('notes', () => {
     const b = { ...iman(), id: 'b', name: '' };
     expect(mealForLine('Lunch', 1, [a, b])).toBe('Lunch is for Iman');
     expect(mealForLine('Dinner', 2, [a, b])).toBe('Dinner is for everyone');
-    expect(mealForLine('Dinner', 3, [a, b])).toBe('');
+    expect(mealForLine('Dinner', 3, [a, b])).toBe('Add 1 more person below');
+    expect(mealForLine('Dinner', 9, [a, b])).toBe('');
     expect(mealForLine('Lunch', 2, [a, b, { ...a, id: 'c', name: 'Asha' }])).toBe('Lunch is for Iman and Person 2');
+  });
+});
+
+describe('people at lunch and dinner', () => {
+  it('accepts a count larger than the profiles added so far, and asks for the missing profiles', () => {
+    const s = blankSetup();
+    s.household.lunchCount = 3;
+    s.household.dinnerCount = 2;
+    const items = missingItems(s);
+    expect(items.some((i) => i.field === 'lunchCount' || i.field === 'dinnerCount')).toBe(false);
+    expect(items.find((i) => i.field === 'people')?.label).toBe('Household: Add 2 more people (3 eat together)');
+  });
+  it('rejects counts outside 1 to 8', () => {
+    const s = blankSetup();
+    s.household.lunchCount = 9;
+    s.household.dinnerCount = 0;
+    const fields = missingItems(s).map((i) => i.field);
+    expect(fields).toContain('lunchCount');
+    expect(fields).toContain('dinnerCount');
   });
 });

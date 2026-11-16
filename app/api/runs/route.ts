@@ -1,6 +1,6 @@
 import { start } from 'workflow/api';
 import { denied, hasAccess } from '@/lib/auth';
-import { createRun, TooManyRuns } from '@/lib/run';
+import { createRun, stepFail, TooManyRuns } from '@/lib/run';
 import type { Setup } from '@/lib/types';
 import { generatePlan } from '@/workflows/generate';
 
@@ -18,8 +18,13 @@ export async function POST(req: Request) {
   if (!valid(body.setup)) return Response.json({ error: 'Setup is incomplete' }, { status: 400 });
   try {
     const { runId, code } = await createRun(body.setup);
-    // Run history is deleted as soon as the run ends (NFR-2).
-    await start(generatePlan, [runId], { experimental_retention: 0 });
+    try {
+      // Run history is deleted as soon as the run ends (NFR-2).
+      await start(generatePlan, [runId], { experimental_retention: 0 });
+    } catch (err) {
+      await stepFail(runId, 'start').catch(() => {});
+      throw err;
+    }
     return Response.json({ runId, code });
   } catch (err) {
     if (err instanceof TooManyRuns) return Response.json({ error: 'Daily limit reached' }, { status: 429 });

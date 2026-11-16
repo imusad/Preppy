@@ -8,15 +8,14 @@ import DishPicker from './DishPicker';
 import { BanIcon, FaceIcon, LeafIcon, PanIcon } from './icons';
 import { Field, Group, PickedChips, StatusTag, Tiles, cx, toInt } from './parts';
 import {
-  addOtherRestriction, anchorId, bothListsNote, dishesInBoth, missingText, personLabel, personMissing, pickRestriction,
-} from './validate';
+  addOtherRestriction, anchorId, bothListsNote, dishesInBoth, missingText, personLabel, personMissing, pickRestriction, toggleWithNone } from './validate';
 import s from './Setup.module.css';
 
 const DIET_OPTS = DIETS.map((d) => ({ key: d, label: d }));
 const tile = (r: (typeof RESTRICTIONS)[number]) => ({ key: r.id, label: r.label, grey: r.kind === 'none' });
 const TASTE_OPTS = RESTRICTIONS.filter((r) => r.kind === 'none' || r.kind === 'dislike').map(tile);
 const ALLERGY_OPTS = RESTRICTIONS.filter((r) => r.kind === 'allergen' || r.kind === 'avoid').map(tile);
-const UTENSIL_OPTS = UTENSILS.map((u) => ({ key: u.id, label: u.label }));
+const UTENSIL_OPTS = [...UTENSILS.map((u) => ({ key: u.id, label: u.label })), { key: 'none', label: 'None of these' }];
 
 export function personSectionId(personId: string): string {
   return 'setup-person-' + personId;
@@ -170,7 +169,7 @@ export default function PersonSection(props: {
         <Group id={id('utensils')} title="Utensils they cook with" label="Utensils" hint="Recipes only use what you pick." req="Pick at least one" missing={isMissing('utensils')}>
           <Tiles
             options={UTENSIL_OPTS} icon={<PanIcon size={26} />} isSelected={(k) => person.utensils.includes(k)}
-            onPick={(k) => onPatch((p) => ({ ...p, utensils: p.utensils.includes(k) ? p.utensils.filter((x) => x !== k) : [...p.utensils, k] }))}
+            onPick={(k) => onPatch((p) => ({ ...p, utensils: toggleWithNone(p.utensils, k, 'none') }))}
           />
         </Group>
 

@@ -30,7 +30,8 @@ export function costText(n: number | null): string {
 /** "Week 1 · ~₹4,850" or "Week 1 · Price unavailable". */
 export function weekLabel(plan: Plan, week: 1 | 2): string {
   const c = plan.weekCost[week - 1];
-  return `Week ${week} · ${c === null || c === undefined ? 'Price unavailable' : `~${money(c)}`}`;
+  if (c === null || c === undefined) return `Week ${week} · Price unavailable`;
+  return `Week ${week} · ~${money(c)}${plan.weekCostPartial?.[week - 1] ? ' + some prices unavailable' : ''}`;
 }
 
 export function dayLabel(d: PlanDay): string {

@@ -201,6 +201,8 @@ export interface Plan {
   bankIds: string[];
   /** Estimated cost per week in rupees; null → "Price unavailable". */
   weekCost: [number | null, number | null];
+  /** True when that week has meals with no price, so its total is only part of the week. */
+  weekCostPartial?: [boolean, boolean];
   /** "Nov 2026"; null when no price table exists yet. */
   pricesChecked: string | null;
   /** "Prices from Bengaluru" when the household city is not Bengaluru. */

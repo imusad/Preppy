@@ -58,22 +58,25 @@ export function chartView(person: Pick<Person, 'chart' | 'chartAccepted' | 'char
   return d.step;
 }
 
-function positive(v: string): boolean {
+/** Ranges the server accepts (lib/chart.ts validBody uses the same numbers). */
+export const BODY_RANGES = { age: [2, 110], heightCm: [60, 250], weightKg: [10, 300] } as const;
+
+function inRange(v: string, [min, max]: readonly [number, number]): boolean {
   const n = Number(v);
-  return v.trim() !== '' && Number.isFinite(n) && n > 0;
+  return v.trim() !== '' && Number.isFinite(n) && n >= min && n <= max;
 }
 
 /** Fields still empty on the open "no chart" form. */
 export function draftMissing(d: ChartDraft, hasPhoto: boolean): Set<DraftField> {
   const m = new Set<DraftField>();
-  if (!positive(d.age)) m.add('age');
+  if (!inRange(d.age, BODY_RANGES.age)) m.add('age');
   if (!d.sex) m.add('sex');
   if (!d.goal) m.add('goal');
   if (d.sex === 'Female' && !d.pregnancy) m.add('pregnancy');
   if (d.conditions.length === 0) m.add('conditions');
   if (d.sub === 'body') {
-    if (!positive(d.heightCm)) m.add('heightCm');
-    if (!positive(d.weightKg)) m.add('weightKg');
+    if (!inRange(d.heightCm, BODY_RANGES.heightCm)) m.add('heightCm');
+    if (!inRange(d.weightKg, BODY_RANGES.weightKg)) m.add('weightKg');
     if (!d.activity) m.add('activity');
   } else {
     if (!d.region) m.add('region');

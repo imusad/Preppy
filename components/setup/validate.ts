@@ -4,6 +4,8 @@ import type { Person, Setup } from '../../lib/types';
 
 export const NONE_RESTRICTION = 'none';
 export const NONE_DISH = 'None';
+/** Most people one plan can cover (the server accepts the same). */
+export const MAX_PEOPLE = 8;
 
 export type HouseholdField = 'city' | 'morningMin' | 'eveningMin' | 'lunchCount' | 'dinnerCount' | 'people';
 export type PersonField =
@@ -83,6 +85,19 @@ const PERSON_LABELS: Record<PersonField, string> = {
   chart: 'Diet chart',
 };
 
+/** Profiles needed for the larger of the lunch and dinner counts. */
+export function profilesNeeded(setup: Setup): number {
+  const h = setup.household;
+  return Math.max(isCount(h.lunchCount, MAX_PEOPLE) ? (h.lunchCount as number) : 0, isCount(h.dinnerCount, MAX_PEOPLE) ? (h.dinnerCount as number) : 0);
+}
+
+function peopleLabel(setup: Setup): string {
+  if (setup.people.length > MAX_PEOPLE) return `Remove people (up to ${MAX_PEOPLE})`;
+  const short = profilesNeeded(setup) - setup.people.length;
+  if (setup.people.length === 0 || short <= 0) return HOUSEHOLD_LABELS.people;
+  return `Add ${short} more ${short === 1 ? 'person' : 'people'} (${profilesNeeded(setup)} eat together)`;
+}
+
 export function householdMissing(setup: Setup): HouseholdField[] {
   const h = setup.household;
   const n = setup.people.length;
@@ -90,9 +105,11 @@ export function householdMissing(setup: Setup): HouseholdField[] {
   if (!h.city) out.push('city');
   if (!(h.morningMin > 0)) out.push('morningMin');
   if (!(h.eveningMin > 0)) out.push('eveningMin');
-  if (!isCount(h.lunchCount, n)) out.push('lunchCount');
-  if (!isCount(h.dinnerCount, n)) out.push('dinnerCount');
-  if (n === 0) out.push('people');
+  // Counts are checked against the household size limit, not the profiles added so far:
+  // people often fill in the household first and add profiles afterwards.
+  if (!isCount(h.lunchCount, MAX_PEOPLE)) out.push('lunchCount');
+  if (!isCount(h.dinnerCount, MAX_PEOPLE)) out.push('dinnerCount');
+  if (n === 0 || n > MAX_PEOPLE || profilesNeeded(setup) > n) out.push('people');
   return out;
 }
 
@@ -112,7 +129,7 @@ export function personMissing(person: Person): PersonField[] {
 /** Everything still to fill, in page order. Empty = ready to generate. */
 export function missingItems(setup: Setup): MissingItem[] {
   const out: MissingItem[] = householdMissing(setup).map((field) => ({
-    personId: null, field, label: 'Household: ' + HOUSEHOLD_LABELS[field],
+    personId: null, field, label: 'Household: ' + (field === 'people' ? peopleLabel(setup) : HOUSEHOLD_LABELS[field]),
   }));
   setup.people.forEach((p, i) => {
     for (const field of personMissing(p)) {
@@ -197,7 +214,11 @@ export function joinNames(names: string[]): string {
 
 /** "Lunch is for Iman" — the server takes the first N people in the list. */
 export function mealForLine(meal: 'Lunch' | 'Dinner', count: number | null, people: Person[]): string {
-  if (!isCount(count, people.length)) return '';
+  if (!isCount(count, MAX_PEOPLE)) return '';
+  if ((count as number) > people.length) {
+    const short = (count as number) - people.length;
+    return `Add ${short} more ${short === 1 ? 'person' : 'people'} below`;
+  }
   if (count === people.length && count > 1) return meal + ' is for everyone';
   return meal + ' is for ' + joinNames(people.slice(0, count as number).map(personLabel));
 }

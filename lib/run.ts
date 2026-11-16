@@ -3,6 +3,8 @@
 // which is emptied when the run ends, so names and health details never sit in run history.
 import { createHash, randomBytes } from 'node:crypto';
 import { askJson, askMany, hasAiKey } from '@/lib/ai';
+import { RESTRICTIONS } from '@/lib/data/catalog';
+import { INGREDIENT_TERMS } from '@/lib/library/wordlist';
 import { kvGet, kvSet, q } from '@/lib/db';
 import { extractRecipe, fetchText } from '@/lib/library/extract';
 import { tagNow } from '@/lib/library/pipeline';
@@ -10,7 +12,7 @@ import { findExtracted, loadFull, loadPrices, loadSlim } from '@/lib/library/sto
 import { DIETS_FOR, type RawRecipe, type SlimRecipe } from '@/lib/library/types';
 import { mealPeople, type PlannerExtras, type TypedRule } from '@/lib/planner/groups';
 import { assemble, schedule } from '@/lib/planner/schedule';
-import { settings } from '@/lib/settings';
+import { CUISINES, settings } from '@/lib/settings';
 import type { Plan, RunProgress, Setup } from '@/lib/types';
 
 interface Work {
@@ -48,14 +50,17 @@ function spend(work: Work, r: { costUsd: number; model: string }): void {
 export class TooManyRuns extends Error {}
 
 export async function createRun(setup: Setup): Promise<{ runId: string; code: string }> {
-  const today = await q<{ n: number | string }>(`select count(*) as n from run_records where created_at > now() - interval '24 hours'`);
-  if (Number(today[0]?.n ?? 0) >= settings.maxRunsPerDay) throw new TooManyRuns();
   const runId = randomBytes(12).toString('hex');
   const code = randomBytes(24).toString('hex');
+  // Check and count in one statement, so requests sent at the same moment cannot all slip past the daily limit.
+  const ok = await q(
+    `insert into run_records (id) select $1 where (select count(*) from run_records where created_at > now() - interval '24 hours') < $2 returning id`,
+    [runId, settings.maxRunsPerDay],
+  );
+  if (ok.length === 0) throw new TooManyRuns();
   const groups = new Set(setup.people.map((p) => `${p.diet}|${p.restrictions.join()}|${p.otherRestrictions.join()}|${p.favourites.join()}|${p.leastFavourites.join()}`)).size;
   const est = settings.estimate.base + settings.estimate.perGroup * groups;
   await q('insert into runs (id, code_hash, setup, est_seconds) values ($1, $2, $3::jsonb, $4)', [runId, hash(code), JSON.stringify(setup), est]);
-  await q('insert into run_records (id) values ($1)', [runId]);
   return { runId, code };
 }
 
@@ -103,6 +108,11 @@ export async function deleteHold(runId: string, code?: string): Promise<boolean>
 
 // ---------- Workflow steps ----------
 
+/** Mark the run as still making progress during a long step, so it is not reported as stopped. */
+async function touch(runId: string): Promise<void> {
+  await q('update runs set progressed_at = now() where id = $1', [runId]);
+}
+
 export async function setStep(runId: string, step: number): Promise<void> {
   const rows = await q<{ work: Work | null; step: number }>('select work, step from runs where id = $1', [runId]);
   const work = rows[0]?.work;
@@ -119,8 +129,11 @@ const RULE_SCHEMA = {
     rules: {
       type: 'array',
       items: {
-        type: 'object', additionalProperties: false, required: ['text', 'strict', 'terms', 'noun'],
-        properties: { text: { type: 'string' }, strict: { type: 'boolean' }, terms: { type: 'array', items: { type: 'string' } }, noun: { type: 'string' } },
+        type: 'object', additionalProperties: false, required: ['text', 'strict', 'terms', 'noun', 'avoidCuisines'],
+        properties: {
+          text: { type: 'string' }, strict: { type: 'boolean' }, terms: { type: 'array', items: { type: 'string' } }, noun: { type: 'string' },
+          avoidCuisines: { type: 'array', items: { type: 'string', enum: CUISINES.filter((c) => c !== 'Other') } },
+        },
       },
     },
   },
@@ -137,7 +150,7 @@ export async function stepPrepare(runId: string): Promise<void> {
     if (hasAiKey()) {
       const ai = await askJson<{ rules: TypedRule[] }>({
         task: 'typed-restrictions', model: settings.models.tagging, schema: RULE_SCHEMA, maxTokens: 1500,
-        system: `A household cook typed food restrictions for one person. For each one, return: text (as typed); strict (true if it is an allergy, intolerance, medical or religious restriction, or could be one; false only when it is clearly a taste dislike such as "doesn't like"); terms (every lower-case ingredient word or phrase a recipe might use for it, including Indian names and common forms, for example "brinjal", "eggplant", "aubergine", "baingan"); noun (one short word for it). When unsure whether it is strict, say true.`,
+        system: `A household cook typed food restrictions for one person. For each one, return: text (as typed); strict (true if it is an allergy, intolerance, medical or religious restriction, or could be one; false only when it is clearly a taste dislike such as "doesn't like"); terms (every lower-case ingredient word or phrase a recipe might use for it, including Indian names and common forms, for example "brinjal", "eggplant", "aubergine", "baingan"); noun (one short word for it); avoidCuisines (the listed cuisines this entry rules out as a whole, for example "no Indian spices" or "no Indian food" rules out every Indian cuisine, "nothing spicy" rules out none; leave it empty when the entry is about an ingredient). When unsure whether it is strict, say true.`,
         content: typed.map((t) => `- ${t}`).join('\n'),
       });
       spend(work, ai);
@@ -146,8 +159,17 @@ export async function stepPrepare(runId: string): Promise<void> {
     // Without an AI answer, treat every typed entry as strict and match on its own words.
     work.extras.typed[p.id] = rules ?? typed.map((text) => {
       const noun = text.toLowerCase().replace(/\b(no|not|never|doesn't|does not|don't|like|likes|eat|eats|allergic|allergy|to|raw|any)\b/g, ' ').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
-      return { text, strict: true, terms: noun ? [noun] : [], noun: noun || text };
+      return { text, strict: true, terms: noun ? [noun] : [], noun: noun || text, avoidCuisines: [] };
     });
+  }
+  // Religious "avoid" tiles (no pork, no beef) also get the AI check, not only the word list.
+  for (const p of setup.people) {
+    for (const id of p.restrictions) {
+      const tile = RESTRICTIONS.find((t) => t.id === id);
+      if (!tile || tile.kind !== 'avoid' || !tile.ingredient) continue;
+      const terms = INGREDIENT_TERMS[tile.ingredient]?.terms ?? [tile.ingredient];
+      work.extras.typed[p.id] = [...(work.extras.typed[p.id] ?? []), { text: tile.label, strict: true, terms, noun: tile.noun ?? tile.ingredient, avoidCuisines: [] }];
+    }
   }
   await saveWork(runId, work);
 }
@@ -157,21 +179,23 @@ const CHECK_SCHEMA = {
   properties: { flagged: { type: 'array', items: { type: 'integer' } } },
 };
 
-/** Step "Finding recipes", part 1: AI check of typed allergies over candidate recipes (A5). Unsure = excluded. */
+/** Step "Finding recipes", part 1: AI check of every typed restriction over candidate recipes (A5). Unsure = excluded. */
 export async function stepCheckTyped(runId: string): Promise<void> {
   const { setup, work } = await load(runId);
-  const strictPeople = setup.people.filter((p) => (work.extras.typed[p.id] ?? []).some((r) => r.strict));
+  // Dislikes are checked too: a typed dislike such as "no Indian spices" cannot be matched by ingredient words alone.
+  const strictPeople = setup.people.filter((p) => (work.extras.typed[p.id] ?? []).length > 0);
   if (strictPeople.length === 0 || !hasAiKey()) return;
   const recipes = await loadSlim();
   for (const p of strictPeople) {
-    const rules = work.extras.typed[p.id].filter((r) => r.strict);
-    const pool = recipes.filter((r) => p.diet && DIETS_FOR[r.category].includes(p.diet));
+    const rules = work.extras.typed[p.id];
+    const avoid = new Set(rules.flatMap((r) => r.avoidCuisines ?? []));
+    const pool = recipes.filter((r) => p.diet && DIETS_FOR[r.category].includes(p.diet) && !avoid.has(r.cuisine));
     const chunks: SlimRecipe[][] = [];
     for (let i = 0; i < pool.length; i += 150) chunks.push(pool.slice(i, i + 150));
     const answers = await askMany<{ flagged: number[] }>(chunks.map((chunk) => ({
-      task: 'typed-allergy-check', model: settings.models.tagging, schema: CHECK_SCHEMA, maxTokens: 2000,
-      system: `You check recipes against a person's food restrictions for a household meal planner. Return the numbers of every recipe that contains, or might contain, any restricted item, including hidden sources in sauces, pastes and stocks. If you are unsure about a recipe, include it. A missed item is far worse than a false alarm.`,
-      content: `Restrictions:\n${rules.map((r) => `- ${r.text}`).join('\n')}\n\nRecipes:\n${chunk.map((r, i) => `${i}. ${r.name}: ${[...r.ingredientNames, ...r.garnish].join(', ')}`).join('\n')}`,
+      task: 'typed-allergy-check', model: settings.models.tagging, schema: CHECK_SCHEMA, maxTokens: 8000,
+      system: `You check recipes against a person's food restrictions and dislikes for a household meal planner. Return the numbers of every recipe that goes against any of them: one that contains, or might contain, a restricted item (including hidden sources in sauces, pastes, spice mixes and stocks), or whose flavour or style is what the person asked to avoid (for example "no Indian spices" rules out any dish built on masalas, garam masala, curry powder, turmeric-and-cumin tempering, tandoori or tikka spicing, whatever its cuisine label). If you are unsure about a recipe, include it. A missed item is far worse than a false alarm.`,
+      content: `Restrictions and dislikes:\n${rules.map((r) => `- ${r.text}`).join('\n')}\n\nRecipes (cuisine in brackets):\n${chunk.map((r, i) => `${i}. ${r.name} (${r.cuisine}): ${[...r.ingredientNames, ...r.garnish].join(', ')}`).join('\n')}`,
     })), 5);
     const excluded: string[] = [];
     answers.forEach((a, ci) => {
@@ -181,6 +205,7 @@ export async function stepCheckTyped(runId: string): Promise<void> {
       else for (const i of a.data.flagged) if (chunks[ci][i]) excluded.push(chunks[ci][i].id);
     });
     work.extras.aiExcluded[p.id] = excluded;
+    await touch(runId);
   }
   await saveWork(runId, work);
 }
@@ -248,7 +273,8 @@ export async function stepTopUp(runId: string): Promise<boolean> {
   if (raws.length < batch && short > 0) add(await findExtracted([], batch - raws.length));
   if (raws.length === 0) { await saveWork(runId, work); return false; }
 
-  const outcome = await tagNow(raws, 6);
+  await touch(runId);
+  const outcome = await tagNow(raws, 6, settings.runCostCapUsd - work.costUsd);
   work.costUsd += outcome.costUsd;
   for (const [m, n] of Object.entries(outcome.models)) work.models[m] = (work.models[m] ?? 0) + n;
   work.topUps += outcome.saved.length;
@@ -274,11 +300,14 @@ export async function stepFinish(runId: string): Promise<void> {
   const rows = await q<{ work: Work | null; plan: Plan | null }>('select work, plan from runs where id = $1', [runId]);
   const work = rows[0]?.work;
   const plan = rows[0]?.plan;
-  if (work) work.stepMs.step3 = Date.now() - work.stepStarted;
-  await q(
-    `update run_records set ai_cost_usd = $2, step_ms = $3::jsonb, topup_count = $4, flag_counts = $5::jsonb, models = $6::jsonb where id = $1`,
-    [runId, work?.costUsd ?? 0, JSON.stringify(work?.stepMs ?? {}), work?.topUps ?? 0, JSON.stringify(plan?.counts ?? {}), JSON.stringify(work?.models ?? {})],
-  );
+  // No work left means an earlier attempt of this step already wrote the record: do not overwrite it with zeros.
+  if (work) {
+    work.stepMs.step3 = Date.now() - work.stepStarted;
+    await q(
+      `update run_records set ai_cost_usd = $2, step_ms = $3::jsonb, topup_count = $4, flag_counts = $5::jsonb, models = $6::jsonb where id = $1`,
+      [runId, work.costUsd, JSON.stringify(work.stepMs), work.topUps, JSON.stringify(plan?.counts ?? {}), JSON.stringify(work.models)],
+    );
+  }
   await q(
     `update runs set status = 'done', step = 3, setup = null, work = null, progressed_at = now(), plan_expires_at = now() + ($2 || ' hours')::interval where id = $1`,
     [runId, String(settings.holdHours)],
@@ -292,6 +321,8 @@ export async function stepFail(runId: string, where: string): Promise<void> {
 
 /** Housekeeping: clear anything past its hold time (belt and braces alongside the workflow's own timer). */
 export async function sweepExpired(): Promise<void> {
+  // A run that died without finishing must not keep the household's details.
+  await q(`update runs set status = 'failed', setup = null, work = null, plan = null where status = 'running' and progressed_at < now() - interval '1 hour'`);
   await q(`update runs set plan = null, setup = null, work = null where plan_expires_at < now() and plan is not null`);
   await q(`delete from runs where started_at < now() - interval '3 days'`);
 }

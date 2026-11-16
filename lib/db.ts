@@ -88,7 +88,14 @@ async function getRunner(): Promise<Runner> {
 /** Run one SQL statement. Pass JSON values as JSON.stringify(x) with a ::jsonb cast. */
 export async function q<T = Row>(text: string, params: unknown[] = []): Promise<T[]> {
   const r = await getRunner();
-  return (await r(text, params)) as T[];
+  try {
+    return (await r(text, params)) as T[];
+  } catch (err) {
+    // One retry when the connection to the database could not be made at all.
+    if (!(err instanceof Error) || !/connecting to database|fetch failed/i.test(err.message)) throw err;
+    await new Promise((res) => setTimeout(res, 800));
+    return (await r(text, params)) as T[];
+  }
 }
 
 export async function kvGet<T>(key: string): Promise<T | null> {

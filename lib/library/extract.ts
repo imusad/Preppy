@@ -73,12 +73,14 @@ function stepsFrom(v: unknown): string[] {
   const out: string[] = [];
   const walk = (x: unknown) => {
     if (!x) return;
-    if (typeof x === 'string') { decode(x).split(/\n+/).map((s) => s.trim()).filter(Boolean).forEach((s) => out.push(s)); return; }
+    // Split before decoding: decode() turns newlines into spaces.
+    const pieces = (t: string) => t.split(/\n+|<br\s*\/?>|<\/p>|<\/li>/i).map(decode).map((s) => s.trim()).filter(Boolean).forEach((s) => out.push(s));
+    if (typeof x === 'string') { pieces(x); return; }
     if (Array.isArray(x)) { x.forEach(walk); return; }
     const o = x as Json;
     if (o.itemListElement) walk(o.itemListElement);
-    else if (typeof o.text === 'string') out.push(decode(o.text));
-    else if (typeof o.name === 'string') out.push(decode(o.name));
+    else if (typeof o.text === 'string') pieces(o.text);
+    else if (typeof o.name === 'string') pieces(o.name);
   };
   walk(v);
   return out.filter((s) => s.length > 3);

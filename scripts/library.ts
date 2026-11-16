@@ -23,15 +23,28 @@ async function status() {
 
 async function build(target: number, readOnly: boolean, maxUsd = 1) {
   let cost = 0;
+  let failures = 0;
   const perSource = Math.ceil((target * 6) / settings.sources.length);
   console.log(`Finding up to ${perSource} recipe pages per site...`);
-  console.log(await discover(perSource));
+  // ONLY_SOURCES=a,b limits finding new pages to those sites (so a build spends only on them).
+  const only = process.env.ONLY_SOURCES?.split(',').map((x) => x.trim()).filter(Boolean);
+  if (only?.length) for (const id of only) console.log(await discover(perSource, id));
+  else console.log(await discover(perSource));
   for (let round = 1; round <= 200; round++) {
     const have = await recipeCount();
     if (have >= target) break;
     if (cost >= maxUsd) { console.log(`Stopped at the spending limit of $${maxUsd}.`); break; }
-    const read = await extractPending(100);
-    const tagged = readOnly ? { saved: [], rejected: 0, costUsd: 0 } : await tagPending(40, 8);
+    let read, tagged;
+    try {
+      read = await extractPending(100);
+      tagged = readOnly ? { saved: [], rejected: 0, costUsd: 0 } : await tagPending(Math.max(1, Math.min(40, Math.floor((maxUsd - cost) / 0.003))), 8, (maxUsd - cost) / 4);
+    } catch (err) {
+      // A dropped connection should not end the build: wait and carry on from the queue.
+      if (++failures > 10) throw err;
+      console.log(`Round ${round}: connection problem (${err instanceof Error ? err.message : err}), retrying...`);
+      await new Promise((r) => setTimeout(r, 15000));
+      continue;
+    }
     cost += tagged.costUsd;
     console.log(`Round ${round}: read ${read.extracted} pages (${read.rejected} unusable), added ${tagged.saved.length} recipes, library ${have + tagged.saved.length}, AI cost so far $${cost.toFixed(2)}`);
     if (read.extracted + read.rejected === 0 && tagged.saved.length + tagged.rejected === 0) { console.log('Nothing left in the queue.'); break; }
@@ -46,7 +59,7 @@ async function tidy() {
   for (const r of rows) {
     const name = cleanName(r.slim.name);
     if (name === r.slim.name) continue;
-    await q('update recipes set name = $2, slim = $3::jsonb where id = $1', [r.id, name, JSON.stringify({ ...r.slim, name, dishKey: dishKey(name) })]);
+    await q('update recipes set name = $2, slim = $3::jsonb where id = $1', [r.id, name, JSON.stringify({ ...r.slim, name, dishKey: [...new Set(`${r.slim.dishKey} ${dishKey(name.replace(/[()]/g, ' '))}`.split(' ').filter(Boolean))].join(' ') })]);
     changed++;
   }
   console.log('Names tidied:', changed, 'of', rows.length);

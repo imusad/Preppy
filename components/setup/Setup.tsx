@@ -6,7 +6,7 @@ import HouseholdSection from './HouseholdSection';
 import PersonSection, { personSectionId } from './PersonSection';
 import { BackIcon, CopyIcon, InfoIcon } from './icons';
 import { cx } from './parts';
-import { anchorId, blankPerson, copyPerson, missingItems, personLabel, personMissing } from './validate';
+import { anchorId, blankPerson, MAX_PEOPLE, copyPerson, missingItems, personLabel, personMissing } from './validate';
 import type { MissingItem } from './validate';
 import s from './Setup.module.css';
 
@@ -184,8 +184,9 @@ export default function Setup({ value, onChange, onGenerate, onBack, editing, ha
         ))}
 
         <div id={anchorId(null, 'people')} tabIndex={-1} className={s.addArea}>
-          <button type="button" className={cx(s.choice, s.choiceCentre, s.choiceAdd)} onClick={() => addPerson()}>+ Add person</button>
-          {people.map((p, i) => {
+          {people.length >= MAX_PEOPLE ? <p className={s.plainHint}>Up to {MAX_PEOPLE} people per plan.</p> : null}
+          {people.length < MAX_PEOPLE ? <button type="button" className={cx(s.choice, s.choiceCentre, s.choiceAdd)} onClick={() => addPerson()}>+ Add person</button> : null}
+          {people.length < MAX_PEOPLE && people.map((p, i) => {
             const label = personLabel(p, i);
             return (
               <button key={p.id} type="button" className={cx(s.choice, s.choiceCentre)} onClick={() => addPerson(p, label)}>

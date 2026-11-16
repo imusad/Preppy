@@ -81,6 +81,16 @@ export const settings = {
     { id: 'tasty', name: 'Tasty', host: 'tasty.co', include: '^https://tasty\\.co/recipe/[a-z0-9-]+$' },
     { id: 'recipetineats', name: 'RecipeTin Eats', host: 'www.recipetineats.com', include: '^https://www\\.recipetineats\\.com/[a-z0-9-]+/$' },
     { id: 'seriouseats', name: 'Serious Eats', host: 'www.seriouseats.com', include: '^https://www\\.seriouseats\\.com/[a-z0-9-]+-recipe-?[0-9]*$' },
+    // Healthy, English-language sites added for variety beyond Indian food.
+    { id: 'minimalistbaker', name: 'Minimalist Baker (vegan)', host: 'minimalistbaker.com', include: '^https://minimalistbaker\\.com/[a-z0-9-]+/$' },
+    { id: 'rainbowplantlife', name: 'Rainbow Plant Life (vegan)', host: 'rainbowplantlife.com', include: '^https://rainbowplantlife\\.com/[a-z0-9-]+/$' },
+    { id: 'pipingpotcurry', name: 'Piping Pot Curry', host: 'pipingpotcurry.com', include: '^https://pipingpotcurry\\.com/[a-z0-9-]+/$' },
+    { id: 'isabeleats', name: 'Isabel Eats (Mexican)', host: 'www.isabeleats.com', include: '^https://www\\.isabeleats\\.com/[a-z0-9-]+/$' },
+    { id: 'rustickitchen', name: 'Inside the Rustic Kitchen (Italian)', host: 'www.insidetherustickitchen.com', include: '^https://www\\.insidetherustickitchen\\.com/[a-z0-9-]+/$' },
+    { id: 'mediterraneandish', name: 'The Mediterranean Dish', host: 'www.themediterraneandish.com', include: '^https://www\\.themediterraneandish\\.com/[a-z0-9-]+/$' },
+    { id: 'seonkyoung', name: 'Seonkyoung Longest (Korean)', host: 'seonkyounglongest.com', include: '^https://seonkyounglongest\\.com/[a-z0-9-]+/$' },
+    { id: 'koreanbapsang', name: 'Korean Bapsang', host: 'www.koreanbapsang.com', include: '^https://www\\.koreanbapsang\\.com/[a-z0-9-]+/$' },
+    { id: 'chopstickchronicles', name: 'Chopstick Chronicles (Japanese)', host: 'www.chopstickchronicles.com', include: '^https://www\\.chopstickchronicles\\.com/[a-z0-9-]+/$' },
     { id: 'budgetbytes', name: 'Budget Bytes', host: 'www.budgetbytes.com', include: '^https://www\\.budgetbytes\\.com/[a-z0-9-]+/$' },
   ],
   /** How this app introduces itself to recipe sites. */
