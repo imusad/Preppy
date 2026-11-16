@@ -119,6 +119,8 @@ export function fits(g: Group, r: SlimRecipe): Fit {
   if (g.allergens.some((a) => r.allergens.includes(a) || r.allergenUnsure.includes(a))) return no;
   if (g.aiExcluded.has(r.id)) return no;
   if (g.avoidCuisines.has(r.cuisine)) return no;
+  // A sauce, dressing or dip on its own is not a dish to serve.
+  if (/\b(sauce|dressing|dip|marinade|seasoning|spice rub|rub|gravy)$/i.test(r.name.replace(/\s*\(.*\)\s*$/, ''))) return no;
   if (g.least.some((l) => sameDish(r.dishKey, l))) return no;
   const notes: string[] = [];
   for (const rule of g.rules) {

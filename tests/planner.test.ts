@@ -153,3 +153,12 @@ describe('word-list safety checks', () => {
     expect(fits(g, recipe({ id: 'm', category: 'meat', ingredientNames: ['mortadella'] })).ok).toBe(false);
   });
 });
+
+describe('not a dish', () => {
+  it('leaves sauces and dressings on their own out of the plan', () => {
+    const [g] = formGroups([person('A', 'Vegetarian')], [person('A', 'Vegetarian')], none);
+    expect(fits(g, recipe({ id: 'h', name: 'Easy Hollandaise Sauce', kind: 'side' })).ok).toBe(false);
+    expect(fits(g, recipe({ id: 'd', name: 'Lemon Tahini Dressing', kind: 'side' })).ok).toBe(false);
+    expect(fits(g, recipe({ id: 'p', name: 'Penne in Tomato Sauce with Basil' })).ok).toBe(true);
+  });
+});

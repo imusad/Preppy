@@ -34,6 +34,12 @@ Design: https://claude.ai/artifact/BnDvTBxPD39zC2wyjvAahW (copies of the screens
 - Sonnet re-tagging made the library cost $0.035 per recipe; Haiku-only with cautious defaults is about $0.002. Owner has only $5 of API credit: always pass a spending cap.
 - Recipe sites: Swasthi and Serious Eats refuse requests, Bong Eats has no sitemap. About 25% of pages become recipes (most rejections: no video).
 
+## 2026-11-16 evening
+- Fixed: lunch/dinner count no longer capped by profiles added so far (1-8; Generate asks for missing profiles); typed restrictions now checked by AI even when they are dislikes, and can rule out whole cuisines ("No Indian spices"); 25 code-review findings fixed (see git log 7056ce5); sauces/dressings no longer scheduled as dishes.
+- Library 517 recipes. Added 9 healthy English sources (vegan, Italian, Mexican, Korean, Japanese, Mediterranean, healthy Indian). English names for all recipes (scripts/rename.ts). Recipe bank shows the source on each row and has a Source filter.
+- No usable Tibetan recipe site found (yowangdu has no recipe format). Japanese and Mexican are still thin (spending cap).
+- API credit: estimated ~$2.95 spent of $5 by end of day (owner must confirm in console Billing). Keep further builds small; `scripts/park.ts` sets aside queued pages from chosen sites so a build spends only on others.
+
 ## Still to do
 - [ ] Run `npm run library -- tidy` after any build (cleans names), then spot-check a live plan
 - [ ] Not yet tested with a real person: photo-based chart, typed "Other" restrictions, ZIP/HTML export in a phone browser
