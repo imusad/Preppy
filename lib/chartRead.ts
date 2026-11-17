@@ -26,7 +26,7 @@ const sureness = { type: 'string', enum: ['sure', 'unsure'] };
 const CHART_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['readable', 'calories', 'caloriesCertainty', 'recipeTypes', 'recipeTypesCertainty', 'gramsPerServing', 'gramsCertainty', 'avoid'],
+  required: ['readable', 'calories', 'caloriesCertainty', 'recipeTypes', 'recipeTypesCertainty', 'gramsPerServing', 'gramsCertainty', 'avoid', 'avoidFoods', 'avoidFoodsCertainty', 'mealKcal'],
   properties: {
     readable: { type: 'boolean' },
     calories: { type: ['integer', 'null'] },
@@ -36,6 +36,9 @@ const CHART_SCHEMA = {
     gramsPerServing: { type: ['integer', 'null'] },
     gramsCertainty: sureness,
     avoid: { type: 'array', items: { type: 'string', enum: [...HEALTH_FLAGS] } },
+    avoidFoods: { type: 'array', items: { type: 'string' } },
+    avoidFoodsCertainty: sureness,
+    mealKcal: { type: ['integer', 'null'] },
   },
 };
 
@@ -47,7 +50,9 @@ Return:
 - recipeTypes: up to 5 short phrases (2 to 6 words each) naming the kinds of food the chart favours for lunch and dinner, such as "Lean protein at lunch and dinner", "Low salt", "Fish, dal and vegetables".
 - gramsPerServing: the grams of the main cooked staple (rice, roti equivalent or similar) the chart allows per lunch or dinner. If the chart gives cups, katoris or pieces, convert to grams and mark it unsure. Use null if nothing like it is stated.
 - avoid: which of the listed things the chart tells the person to avoid or strictly limit.
-- For each of the three values, say "unsure" whenever the text was hard to read, you had to convert or infer, or the chart is ambiguous. Say "sure" only when the chart states it plainly.
+- avoidFoods: up to 8 specific foods the chart says to stop or cut out completely, each a short lower-case word or phrase (for example "rice", "potato", "paneer", "mushrooms"). Only a real food or ingredient the chart itself names. Leave out limits ("excess oil", "minimal sugar", "reduce salt"), broad categories ("processed foods", "fried food", "sugar", "refined flour") and anything covered by the avoid list above. Leave it empty when none are named, and never add foods from your own knowledge of the condition.
+- mealKcal: the calories of one lunch or dinner, if the chart's own lunch and dinner options show them (for example options marked about 350 kcal each: use the typical value). Use null if they are not shown. Where a meal's header and its options disagree, trust the options. Never work one out yourself.
+- For each of the values, say "unsure" whenever the text was hard to read, you had to convert or infer, or the chart is ambiguous. Say "sure" only when the chart states it plainly.
 
 A wrong value marked sure is the worst outcome. When in doubt, mark it unsure.`;
 
@@ -60,6 +65,9 @@ interface ChartAnswer {
   gramsPerServing: number | null;
   gramsCertainty: 'sure' | 'unsure';
   avoid: string[];
+  avoidFoods: string[];
+  avoidFoodsCertainty: 'sure' | 'unsure';
+  mealKcal: number | null;
 }
 
 export async function readChartFile(name: string, type: string, bytes: Buffer): Promise<{ result: ChartUploadResult; costUsd: number }> {
@@ -91,6 +99,8 @@ export async function readChartFile(name: string, type: string, bytes: Buffer): 
   if (a.calories !== null && a.caloriesCertainty === 'unsure') unsure.push('calories');
   if (a.recipeTypes.length > 0 && a.recipeTypesCertainty === 'unsure') unsure.push('recipeTypes');
   if (a.gramsPerServing !== null && a.gramsCertainty === 'unsure') unsure.push('gramsPerServing');
+  const avoidFoods = [...new Set((a.avoidFoods ?? []).map((f) => f.toLowerCase().trim()).filter(Boolean))].slice(0, 8);
+  if (avoidFoods.length > 0 && a.avoidFoodsCertainty === 'unsure') unsure.push('avoidFoods');
   const chart: Chart = {
     source: 'upload',
     fileName: name,
@@ -98,6 +108,8 @@ export async function readChartFile(name: string, type: string, bytes: Buffer): 
     recipeTypes: a.recipeTypes.slice(0, 5),
     gramsPerServing: a.gramsPerServing,
     avoid: a.avoid,
+    avoidFoods,
+    mealKcal: a.mealKcal && a.mealKcal >= 150 && a.mealKcal <= 1200 ? Math.round(a.mealKcal) : null,
     unsure,
     roughEstimate: false,
     advisory: null,

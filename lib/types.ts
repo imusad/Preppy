@@ -8,7 +8,7 @@ export type AllergenId =
 
 // ---------- Diet chart ----------
 
-export type ChartField = 'calories' | 'recipeTypes' | 'gramsPerServing';
+export type ChartField = 'calories' | 'recipeTypes' | 'gramsPerServing' | 'avoidFoods';
 
 export interface Chart {
   source: 'upload' | 'body' | 'photo';
@@ -20,6 +20,10 @@ export interface Chart {
   gramsPerServing: number | null;
   /** Foods the chart advises against, in plain words (e.g. "red meat", "fried food"). */
   avoid: string[];
+  /** Foods the chart says to avoid, e.g. "rice", "potato". Missing on charts read before this was added. */
+  avoidFoods?: string[];
+  /** Calories of one lunch or dinner, when the chart's own meal options show it. */
+  mealKcal?: number | null;
   /** Values the reader was unsure of; highlighted with "Please check this value". */
   unsure: ChartField[];
   /** True for photo charts: labelled "Rough estimate". */

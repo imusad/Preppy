@@ -5,6 +5,7 @@ import { cleanName, dishKey } from '@/lib/library/dishKey';
 import type { AiRequest } from '@/lib/ai';
 import { PRICE_ITEMS } from '@/lib/data/priceItems';
 import { UTENSILS } from '@/lib/data/catalog';
+import { spiceLevelOf } from '@/lib/library/spice';
 import { ALLERGEN_IDS, mentions, scanAllergens } from '@/lib/library/wordlist';
 import type { FoodCategory, FullRecipe, RawRecipe, SlimRecipe } from '@/lib/library/types';
 import { CUISINES, HEALTH_FLAGS, settings, type HealthFlag } from '@/lib/settings';
@@ -18,7 +19,7 @@ export { dishKey };
 
 const yesNo = { type: 'string', enum: ['yes', 'no', 'unsure'] };
 
-const TAG_SCHEMA = {
+export const TAG_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   required: ['englishName', 'complete', 'unsure', 'cuisine', 'kind', 'category', 'utensils', 'techniques', 'keyIngredients', 'servings', 'kcalPerServing', 'healthFlags', 'allergens', 'ingredients', 'steps'],
@@ -63,7 +64,7 @@ const TAG_SCHEMA = {
   },
 };
 
-const TAG_SYSTEM = `You tag real recipes for a household meal planner in India. The cook makes lunch and the first part of dinner in a short morning window, then finishes dinner in a short evening window. Your tags drive safety filters and scheduling, so accuracy matters more than generosity.
+export const TAG_SYSTEM = `You tag real recipes for a household meal planner in India. The cook makes lunch and the first part of dinner in a short morning window, then finishes dinner in a short evening window. Your tags drive safety filters and scheduling, so accuracy matters more than generosity.
 
 Fill every field:
 
@@ -72,6 +73,7 @@ Fill every field:
 - complete: false if this is not a cookable lunch or dinner recipe with real ingredients and steps (for example a drink, dessert, breakfast-only item, snack, baking project, spice mix, round-up article, or steps too thin to cook from).
 - unsure: true if you had to guess at any tag that affects safety or scheduling (category, allergens, the ahead/last split, times).
 - cuisine: the closest listed cuisine. Goan, Gujarati, Maharashtrian, Punjabi street food and so on go under the nearest Indian choice or "Other Indian". Chinese-style dishes cooked the Indian way are "Indo-Chinese". Anything else is "Other".
+- If the title names a sauce, seasoning, spice mix, rub, brine or marinade but the recipe also cooks the main ingredient (fish, chicken, vegetables) to serve as the meal, treat it as that dish and give an englishName that names the dish, for example "Spice-Rubbed Pan-Fried Fish". If it only makes the sauce, condiment or mix, set complete to false.
 - kind: "main" for a dish that anchors a meal (curry with protein or dal, rice dish, noodles, pasta, one-pot meals, stuffed breads). "side" for a small accompaniment that takes about 10 minutes or less of work (salad, raita, plain rice, simple stir-fried vegetable, chutney, roti). "neither" for anything else.
 - category: what the dish contains, checking every ingredient including stocks, sauces and pastes: "meat" (any meat or poultry, including meat stock, gelatine, lard), "fish" (fish or seafood, including fish sauce, oyster sauce, shrimp paste, anchovies), "egg" (eggs but no meat or fish), "vegetarian" (dairy or honey but no eggs, meat or fish), "vegan" (no animal products at all).
 - utensils: only the listed utensils the recipe cannot reasonably be made without. A normal pot, pan or stove is assumed and not listed.
@@ -102,7 +104,7 @@ export interface TagAnswer {
   steps: { when: 'ahead' | 'last'; min: number }[];
 }
 
-function recipeText(raw: RawRecipe): string {
+export function recipeText(raw: RawRecipe): string {
   return [
     `Name: ${raw.name}`,
     raw.cuisineHint ? `Site cuisine label: ${raw.cuisineHint}` : '',
@@ -154,21 +156,32 @@ function round(n: number, places = 2): number {
   return Math.round(n * f) / f;
 }
 
-const MEAT_TERMS = ['chicken', 'mutton', 'lamb', 'beef', 'pork', 'bacon', 'ham', 'turkey', 'duck', 'sausage', 'salami', 'pepperoni', 'chorizo', 'prosciutto', 'pancetta', 'keema', 'kheema', 'gosht', 'murgh', 'meat', 'steak', 'veal', 'venison', 'goat', 'lard', 'gelatin', 'gelatine', 'bone broth', 'meatball', 'mince', 'qeema'];
+const MEAT_TERMS = ['hot dog', 'hotdog', 'bratwurst', 'frankfurter', 'wiener', 'bolognese', 'pastrami', 'brisket', 'oxtail', 'chicken', 'mutton', 'lamb', 'beef', 'pork', 'bacon', 'ham', 'turkey', 'duck', 'sausage', 'salami', 'pepperoni', 'chorizo', 'prosciutto', 'pancetta', 'keema', 'kheema', 'gosht', 'murgh', 'meat', 'steak', 'veal', 'venison', 'goat', 'lard', 'gelatin', 'gelatine', 'bone broth', 'meatball', 'mince', 'qeema'];
 // Phrases cut out of the text before matching (not whole lines skipped).
-const MEAT_EXCEPT = ['vegan sausage', 'vegetarian sausage', 'vegan chicken', 'mock meat', 'meatless', 'soya chunk', 'soya mince', 'soy chunk', 'soy mince', 'plant-based meat', 'plant based meat', 'jackfruit', 'coconut meat', 'hamburger bun', 'duck sauce', 'vegetarian meatball', 'vegan meatball', 'veggie mince'];
+const MEAT_EXCEPT = ['lentil bolognese', 'vegan bolognese', 'vegetarian bolognese', 'veggie bolognese', 'mushroom bolognese', 'vegan hot dog', 'veggie hot dog', 'vegan sausage', 'vegetarian sausage', 'vegan chicken', 'mock meat', 'meatless', 'soya chunk', 'soya mince', 'soy chunk', 'soy mince', 'plant-based meat', 'plant based meat', 'jackfruit', 'coconut meat', 'hamburger bun', 'duck sauce', 'vegetarian meatball', 'vegan meatball', 'veggie mince'];
 const RANK: Record<FoodCategory, number> = { vegan: 0, vegetarian: 1, egg: 2, fish: 3, meat: 4 };
 
 /** Plain-code second check of the diet category: the more restrictive of the tagger's answer and the word list wins. */
 function safeCategory(tagged: FoodCategory, raw: RawRecipe): FoodCategory {
-  const lines = raw.ingredientLines.map((l) => l.toLowerCase());
+  const words = wordCategory(raw.name, raw.ingredientLines);
+  return RANK[words] > RANK[tagged] ? words : tagged;
+}
+
+/** What the fixed word list alone says a recipe is (used at tagging and by library clean-ups). */
+export function wordCategory(name: string, ingredientLines: string[]): FoodCategory {
+  const raw = { name };
+  const lines = ingredientLines.map((l) => l.toLowerCase());
   const found = new Set(scanAllergens(lines));
   let words: FoodCategory = 'vegan';
   if (found.has('milk') || mentions(lines, ['honey', 'shahad', 'madhu'], ['vegan honey', 'honey substitute'])) words = 'vegetarian';
   if (found.has('eggs')) words = 'egg';
   if (found.has('fish') || found.has('crustaceans') || found.has('molluscs')) words = 'fish';
   if (mentions([raw.name.toLowerCase(), ...lines], MEAT_TERMS, MEAT_EXCEPT)) words = 'meat';
-  return RANK[words] > RANK[tagged] ? words : tagged;
+  return words;
+}
+
+export function stricterCategory(a: FoodCategory, b: FoodCategory): FoodCategory {
+  return RANK[a] >= RANK[b] ? a : b;
 }
 
 /** Matching words from both the English name and the original page title, so favourites match either. */
@@ -223,6 +236,7 @@ export function finalise(raw: RawRecipe, tag: TagAnswer, sourceName: string, rul
     ingredientNames: tag.ingredients.filter((i) => !i.garnish).map((i) => i.name.toLowerCase()),
     garnish: tag.ingredients.filter((i) => i.garnish).map((i) => i.name.toLowerCase()),
     allergens, allergenUnsure, healthFlags: tag.healthFlags,
+    spiceLevel: spiceLevelOf(tag.ingredients.map((i) => ({ qty: i.qty === null ? null : i.qty / servings, unit: i.unit, name: i.name }))),
     kcal: raw.kcal && raw.kcal > 30 ? Math.round(raw.kcal) : tag.kcalPerServing || null,
     totalMin, aheadMin, lastMin, popular,
     priced: tag.ingredients.filter((i) => i.priceItem !== 'minor').map((i) => ({ item: i.priceItem === 'none' ? null : i.priceItem, grams: round(i.grams / servings, 1) })),

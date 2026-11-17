@@ -2,6 +2,7 @@
 // "Full" adds the text shown on the recipe screen and is only loaded for chosen recipes.
 import type { AllergenId, Diet, Ingredient, RecipeStep } from '@/lib/types';
 import type { HealthFlag } from '@/lib/settings';
+import type { SpiceLevel } from '@/lib/library/spice';
 
 /** What the dish is made of, from most to least restrictive. */
 export type FoodCategory = 'vegan' | 'vegetarian' | 'egg' | 'fish' | 'meat';
@@ -36,6 +37,8 @@ export interface SlimRecipe {
   /** Allergens the two checks could not settle: treated as present. */
   allergenUnsure: AllergenId[];
   healthFlags: HealthFlag[];
+  /** How hot the dish is. Missing on recipes not yet backfilled (see spiceOf). */
+  spiceLevel?: SpiceLevel;
   kcal: number | null;
   totalMin: number;
   /** Minutes of steps that can be done ahead (morning). */
@@ -43,6 +46,8 @@ export interface SlimRecipe {
   /** Minutes of last-minute steps (evening finish). 0 = cannot be split. */
   lastMin: number;
   popular: boolean;
+  /** Set by a library clean-up: a condiment or component, never planned as a meal. */
+  notADish?: boolean;
   /** Rupees per serving from the price table; null when an ingredient has no price. Filled at run time. */
   costPerServing?: number | null;
   /** Price-table item → grams per serving, for costing. null entry = an ingredient with no price item. */

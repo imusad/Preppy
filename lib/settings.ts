@@ -26,9 +26,9 @@ export const settings = {
   webSearchUsdPerSearch: 0.01,
 
   // ---- Cost guard (TECH-3) ----
-  runCostCapUsd: num('RUN_COST_CAP_USD', 0.25),
+  runCostCapUsd: num('RUN_COST_CAP_USD', 0.05),
   /** Top-up stops once the run's AI cost reaches this. */
-  runCostGuardUsd: num('RUN_COST_GUARD_USD', 0.2),
+  runCostGuardUsd: num('RUN_COST_GUARD_USD', 0.04),
   topUpMaxRecipes: num('TOPUP_MAX_RECIPES', 30),
   /** Stops friends (or strangers) running up the bill. */
   maxRunsPerDay: num('MAX_RUNS_PER_DAY', 12),
@@ -54,7 +54,19 @@ export const settings = {
   /** Share of the daily calorie target that one lunch or dinner should provide. */
   mealCalorieShare: 0.325,
   /** A meal this far above its calorie share is treated as breaking the chart. */
-  calorieOverFactor: 1.5,
+  calorieOverFactor: 1.3,
+
+  // ---- Spice (heat points per serving; see lib/library/spice.ts) ----
+  spice: { mildMax: 0.5, mediumMax: 1.5 },
+
+  // ---- Diet chart and dish preferences ----
+  /** Score for a dish that is a favourite (exact) or from the same dish family (e.g. any biryani). */
+  favouriteExact: 40,
+  favouriteFamily: 15,
+  /** Score taken off a least-favourite dish that the chart favours (so it is used only when nothing better fits). */
+  leastFavouritePenalty: 30,
+  /** Score added for each chart favour-tag a recipe meets (protein keeps its old weight of 12). */
+  chartTagBonus: 6,
 
   // ---- Fun factor ----
   fun: { base: 1, newCuisine: 2, newTechniqueOrIngredient: 1, popular: 1 },
@@ -62,6 +74,12 @@ export const settings = {
 
   // ---- Waiting estimate (seconds) ----
   estimate: { base: 30, perGroup: 30, perTopUp: 5 },
+
+  // ---- Scheduled upkeep (both spend API credit, so both are off until the owner turns them on) ----
+  /** Monthly library refresh on the 1st (finds, reads and AI-tags up to 400 new recipes). Recipes are now tagged in Claude Code chat. */
+  autoLibraryRefresh: process.env.AUTO_LIBRARY_REFRESH === 'on',
+  /** Quarterly price refresh (about 48 web searches, roughly $0.50). */
+  autoPriceRefresh: process.env.AUTO_PRICE_REFRESH === 'on',
 
   // ---- Library and prices ----
   libraryTarget: num('LIBRARY_TARGET', 3000),
@@ -92,6 +110,15 @@ export const settings = {
     { id: 'koreanbapsang', name: 'Korean Bapsang', host: 'www.koreanbapsang.com', include: '^https://www\\.koreanbapsang\\.com/[a-z0-9-]+/$' },
     { id: 'chopstickchronicles', name: 'Chopstick Chronicles (Japanese)', host: 'www.chopstickchronicles.com', include: '^https://www\\.chopstickchronicles\\.com/[a-z0-9-]+/$' },
     { id: 'budgetbytes', name: 'Budget Bytes', host: 'www.budgetbytes.com', include: '^https://www\\.budgetbytes\\.com/[a-z0-9-]+/$' },
+    // Healthy, general sites added 2026-11-17 (tested: 5 to 9 of 10 pages have a video and a full recipe).
+    { id: 'fitfoodiefinds', name: 'Fit Foodie Finds', host: 'fitfoodiefinds.com', include: '^https://fitfoodiefinds\\.com/[a-z0-9-]+/$' },
+    { id: 'cleananddelicious', name: 'Clean & Delicious', host: 'cleananddelicious.com', include: '^https://cleananddelicious\\.com/[a-z0-9-]+/$' },
+    { id: 'ministryofcurry', name: 'Ministry of Curry', host: 'ministryofcurry.com', include: '^https://ministryofcurry\\.com/[a-z0-9-]+/$' },
+    { id: 'kitchenofdebjani', name: 'Kitchen of Debjani (Bengali)', host: 'kitchenofdebjani.com', include: '^https://kitchenofdebjani\\.com/[0-9]{4}/[0-9]{2}/[a-z0-9-]+/?$' },
+    { id: 'wellplated', name: 'Well Plated', host: 'www.wellplated.com', include: '^https://www\\.wellplated\\.com/[a-z0-9-]+/$' },
+    { id: 'feelgoodfoodie', name: 'Feel Good Foodie', host: 'feelgoodfoodie.net', include: '^https://feelgoodfoodie\\.net/recipe/[a-z0-9-]+/$' },
+    { id: 'cookieandkate', name: 'Cookie and Kate (vegetarian)', host: 'cookieandkate.com', include: '^https://cookieandkate\\.com/[a-z0-9-]+/$' },
+    { id: 'downshiftology', name: 'Downshiftology', host: 'downshiftology.com', include: '^https://downshiftology\\.com/recipes/[a-z0-9-]+/$' },
   ],
   /** How this app introduces itself to recipe sites. */
   userAgent: 'PreppyMealPlanner/1.0 (private household meal planner)',

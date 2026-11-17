@@ -2,9 +2,11 @@
 // price table always give the same plan.
 import type { FullRecipe, SlimRecipe } from '@/lib/library/types';
 import {
-  breaksChart, coreName, costPerServing, familiarTags, proteinRich, sideLike, fits, formGroups, funFactor, listNames, mealPeople, sameDish,
+  breaksChart, coreName, costPerServing, familiarTags, inspiredBy, isLeast, sideLike, fits, formGroups, funFactor, listNames, mealPeople, sameDish,
   type Group, type PlannerExtras,
 } from '@/lib/planner/groups';
+import { meetsTag, proteinRich } from '@/lib/planner/chartFit';
+import { SPICE_ORDER, type SpiceLevel } from '@/lib/library/spice';
 import { settings } from '@/lib/settings';
 import type { Flag, FlagKind, Plan, PlanDay, PlanDish, PlanRecipe, Setup } from '@/lib/types';
 
@@ -17,7 +19,12 @@ interface Candidate {
   fun: number;
   cost: number | null;
   notes: string[];
+  /** The dish itself is one of the group's favourites. */
   isFavourite: boolean;
+  /** The dish is from the same family as a favourite (another biryani). */
+  family: boolean;
+  /** A least-favourite dish that is only here because the diet chart favours it. */
+  least: boolean;
 }
 
 interface GroupPool {
@@ -38,6 +45,8 @@ function intersect(lists: Candidate[][], ok: (c: Candidate) => boolean = () => t
       notes: [...new Set(all.flatMap((x) => x.notes))],
       fun: Math.min(...all.map((x) => x.fun)),
       isFavourite: all.some((x) => x.isFavourite),
+      family: all.some((x) => x.family),
+      least: all.some((x) => x.least),
     };
   });
 }
@@ -60,6 +69,8 @@ function sharedPool(pools: GroupPool[]): GroupPool | null {
     favCuisines: new Set(gs.flatMap((g) => [...g.favCuisines])),
     chartAvoid: [...new Set(gs.flatMap((g) => g.chartAvoid))],
     wantsProtein: gs.some((g) => g.wantsProtein),
+    chartTags: [...new Set(gs.flatMap((g) => g.chartTags))],
+    maxSpice: gs.map((g) => g.maxSpice).filter((m): m is SpiceLevel => m !== null).reduce<SpiceLevel | null>((a, b) => (a === null || SPICE_ORDER.indexOf(b) < SPICE_ORDER.indexOf(a) ? b : a), null),
     mealKcal: kcals.length ? Math.round(kcals.reduce((a, b) => a + b, 0) / kcals.length) : null,
   };
   // A shared dish must not break anyone's chart: otherwise they get their own dish.
@@ -135,9 +146,10 @@ function buildPools(input: PlannerInput): { lunch: GroupPool[]; dinner: GroupPoo
       for (const r of recipes) {
         const fit = fits(group, r);
         if (!fit.ok) continue;
+        const kinds = group.favourites.map((f) => inspiredBy(r.dishKey, f));
         const c: Candidate = {
           r, notes: fit.notes, fun: funFactor(group, r, familiar), cost: costPerServing(r, prices),
-          isFavourite: group.favourites.some((f) => sameDish(r.dishKey, f)),
+          isFavourite: kinds.includes('exact'), family: kinds.includes('family'), least: isLeast(group, r),
         };
         // Light dishes tagged as mains (a melon salad, garlic bread) are served as sides, not as the meal.
         const asSide = r.kind === 'side' || sideLike(r);
@@ -191,7 +203,7 @@ export function schedule(input: PlannerInput): Draft {
       const sideReserve = freeSides.length ? Math.min(...freeSides.map((s) => s.r.totalMin)) : 0;
       const sideCostReserve = freeSides.length ? Math.min(...freeSides.map((s) => s.cost ?? 0)) : 0;
 
-      interface Option { c: Candidate; mode: Mode; m: number; e: number; over: number; overBudget: number; score: number; broken: boolean }
+      interface Option { c: Candidate; mode: Mode; m: number; e: number; over: number; overBudget: number; score: number }
       const options: Option[] = [];
       const streak = h.cuisines.slice(-settings.maxSameCuisineInARow);
       const cuisinesSoFar = new Set(h.cuisines);
@@ -219,20 +231,28 @@ export function schedule(input: PlannerInput): Draft {
         }
         if (!best) continue;
         const overBudget = c.cost === null ? 0 : Math.max(0, c.cost + sideCostReserve - g.budget);
-        const broken = breaksChart(g, r);
         const favouriteDue = c.isFavourite && !g.favourites.every((f) => h.favouritesDone.has(f) || !sameDish(r.dishKey, f));
         const outsideFav = !g.favCuisines.has(r.cuisine);
 
         let score = c.fun * 3;
-        if (g.wantsProtein) score += proteinRich(r) ? 12 : -6;
-        if (favouriteDue && mealNo - h.lastFavouriteAt >= 3) score += 40;
+        // What the diet chart favours: protein keeps its old weight; other tags add a smaller bonus.
+        for (const tag of g.chartTags) {
+          if (tag === 'protein') score += proteinRich(r) ? 12 : -6;
+          else if (meetsTag(tag, r)) score += settings.chartTagBonus;
+        }
+        // Favourites are inspiration: the dish itself scores highest, a dish from its family a little.
+        if (mealNo - h.lastFavouriteAt >= 3) {
+          if (favouriteDue) score += settings.favouriteExact;
+          else if (c.family) score += settings.favouriteFamily;
+        }
+        // A least favourite that the chart favours is used only when nothing better fits.
+        if (c.least) score -= settings.leastFavouritePenalty;
         if (streak.length === settings.maxSameCuisineInARow && streak.every((x) => x === r.cuisine)) score -= 1000;
         if (h.cuisines[h.cuisines.length - 1] === r.cuisine) score -= 3;
         if (!cuisinesSoFar.has(r.cuisine) && cuisinesSoFar.size < settings.minCuisines) score += 6;
         if (outsideFav && h.outside * settings.outsideFavouritesEvery < mealNo + 1) score += 8;
-        if (broken) score -= favouriteDue ? 0 : 100;
         if (g.mealKcal !== null && r.kcal !== null) score -= (Math.abs(r.kcal - g.mealKcal * 0.8) / g.mealKcal) * (favouriteDue ? 10 : 4);
-        options.push({ c, ...best, overBudget, score, broken });
+        options.push({ c, ...best, overBudget, score });
       }
 
       if (options.length === 0) {
@@ -258,17 +278,18 @@ export function schedule(input: PlannerInput): Draft {
       let side: Candidate | null = null;
       let sideInEvening = false;
       const sideOptions = freeSides
+        // A side that would take the meal over the chart's calorie ceiling is not served.
+        .filter((s) => !breaksChart(g, main.r, s.r.kcal ?? 0))
         .map((s) => {
           const inEvening = meal === 'dinner' && morning + s.r.totalMin > morningWin && evening + s.r.totalMin <= eveningWin;
           const over = inEvening ? 0 : Math.max(0, morning + s.r.totalMin - morningWin) - Math.max(0, morning - morningWin);
           const budgetOver = main.cost === null || s.cost === null ? 0 : Math.max(0, main.cost + s.cost - g.budget);
           const match = family(s.r.cuisine) === family(main.r.cuisine) ? 0 : 1;
-          const chartOk = s.r.healthFlags.some((f) => g.chartAvoid.includes(f)) ? 1 : 0;
           const dupe = usedCore.has(coreName(s.r.name)) && !sideDay.has(s.r.id) ? 1 : 0;
-          return { s, inEvening, over, budgetOver, match, chartOk, dupe };
+          return { s, inEvening, over, budgetOver, match, dupe };
         })
         .filter((o) => !o.dupe)
-        .sort((a, b) => a.over - b.over || a.chartOk - b.chartOk || a.budgetOver - b.budgetOver || a.match - b.match || b.s.fun - a.s.fun || (a.s.r.id < b.s.r.id ? -1 : 1));
+        .sort((a, b) => a.over - b.over || a.budgetOver - b.budgetOver || a.match - b.match || b.s.fun - a.s.fun || (a.s.r.id < b.s.r.id ? -1 : 1));
       if (sideOptions.length) {
         side = sideOptions[0].s;
         sideInEvening = sideOptions[0].inEvening;
@@ -284,7 +305,6 @@ export function schedule(input: PlannerInput): Draft {
       const perServing = main.cost === null || (side && side.cost === null) ? null : main.cost + (side?.cost ?? 0);
       if (perServing === null) flags.push(flag('price_unavailable'));
       else if (perServing > g.budget) flags.push(flag('over_budget', perServing - g.budget));
-      if (breaksChart(g, main.r, side?.r.kcal ?? 0) || (side && side.r.healthFlags.some((f) => g.chartAvoid.includes(f)))) flags.push(flag('non_compliant'));
 
       const dish: DraftDish = {
         ...base, mainId: main.r.id, sideId: side?.r.id ?? null, mode: chosen.mode,
@@ -296,15 +316,13 @@ export function schedule(input: PlannerInput): Draft {
       state.evening = evening;
       h.cuisines.push(main.r.cuisine);
       if (!g.favCuisines.has(main.r.cuisine)) h.outside++;
-      if (main.isFavourite) {
-        g.favourites.filter((f) => sameDish(main.r.dishKey, f)).forEach((f) => h.favouritesDone.add(f));
-        h.lastFavouriteAt = h.cuisines.length - 1;
-      }
+      if (main.isFavourite) g.favourites.filter((f) => sameDish(main.r.dishKey, f)).forEach((f) => h.favouritesDone.add(f));
+      if (main.isFavourite || main.family) h.lastFavouriteAt = h.cuisines.length - 1;
       for (const other of hs.slice(1)) {
         other.cuisines.push(main.r.cuisine);
         if (!g.favCuisines.has(main.r.cuisine)) other.outside++;
         for (const f of h.favouritesDone) other.favouritesDone.add(f);
-        if (main.isFavourite) other.lastFavouriteAt = other.cuisines.length - 1;
+        if (main.isFavourite || main.family) other.lastFavouriteAt = other.cuisines.length - 1;
       }
       return dish;
     };
@@ -337,7 +355,7 @@ export function schedule(input: PlannerInput): Draft {
   const shortGroups: Draft['gaps']['shortGroups'] = [];
   for (const pool of pools.all.values()) {
     for (const f of pool.group.favourites) {
-      if (!pool.group.least.includes(f) && !pool.mains.some((c) => sameDish(c.r.dishKey, f))) wanted.add(f);
+      if (!pool.group.least.includes(f) && !pool.mains.some((c) => inspiredBy(c.r.dishKey, f) !== null)) wanted.add(f);
     }
     if (pool.mains.length < meals || pool.sides.length < meals) {
       shortGroups.push({ diet: pool.group.diet, mains: Math.max(0, meals - pool.mains.length), sides: Math.max(0, meals - pool.sides.length) });

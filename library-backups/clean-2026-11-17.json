@@ -1,0 +1,1792 @@
+[
+ {
+  "id": "1b5556e564bb",
+  "slim": {
+   "id": "1b5556e564bb",
+   "kcal": 265,
+   "kind": "main",
+   "name": "Fish Seasoning Spice Mix",
+   "priced": [
+    {
+     "item": "fish (rohu or similar)",
+     "grams": 187.5
+    },
+    {
+     "item": "butter",
+     "grams": 11.3
+    },
+    {
+     "item": "butter",
+     "grams": 7.5
+    }
+   ],
+   "source": "RecipeTin Eats",
+   "cuisine": "Other",
+   "dishKey": "fish seasoning spice mix",
+   "garnish": [
+    "extra unsalted butter"
+   ],
+   "lastMin": 10,
+   "popular": false,
+   "aheadMin": 3,
+   "category": "fish",
+   "totalMin": 13,
+   "utensils": [],
+   "allergens": [
+    "fish",
+    "milk",
+    "celery",
+    "mustard"
+   ],
+   "spiceLevel": "mild",
+   "techniques": [
+    "pan-frying",
+    "seasoning"
+   ],
+   "healthFlags": [
+    "high fat"
+   ],
+   "allergenUnsure": [],
+   "keyIngredients": [
+    "fish fillets",
+    "smoked paprika",
+    "celery salt",
+    "butter"
+   ],
+   "ingredientNames": [
+    "celery salt",
+    "black pepper",
+    "smoked paprika",
+    "mustard powder",
+    "mace",
+    "allspice",
+    "ground clove",
+    "ginger powder",
+    "cayenne pepper",
+    "ground cardamom",
+    "fish fillets",
+    "unsalted butter"
+   ]
+  }
+ },
+ {
+  "id": "48b8fa0629f1",
+  "slim": {
+   "id": "48b8fa0629f1",
+   "kcal": 393,
+   "kind": "main",
+   "name": "Lemon Butter Sauce for Fish",
+   "priced": [
+    {
+     "item": "butter",
+     "grams": 30
+    },
+    {
+     "item": "lemon",
+     "grams": 7.5
+    },
+    {
+     "item": "fish (rohu or similar)",
+     "grams": 135
+    },
+    {
+     "item": "maida",
+     "grams": 8
+    },
+    {
+     "item": "cooking oil",
+     "grams": 15
+    },
+    {
+     "item": "lemon",
+     "grams": 30
+    },
+    {
+     "item": "coriander leaves",
+     "grams": 2.5
+    }
+   ],
+   "source": "RecipeTin Eats",
+   "cuisine": "Other",
+   "dishKey": "lemon butter sauce for fish",
+   "garnish": [
+    "lemon wedges",
+    "parsley, finely chopped"
+   ],
+   "lastMin": 8,
+   "popular": true,
+   "aheadMin": 5,
+   "category": "fish",
+   "totalMin": 13,
+   "utensils": [],
+   "allergens": [
+    "gluten",
+    "fish",
+    "milk"
+   ],
+   "spiceLevel": "none",
+   "techniques": [
+    "browning butter",
+    "shallow frying"
+   ],
+   "healthFlags": [
+    "high fat"
+   ],
+   "allergenUnsure": [],
+   "keyIngredients": [
+    "fish fillets",
+    "butter",
+    "lemon juice",
+    "flour"
+   ],
+   "ingredientNames": [
+    "butter",
+    "lemon juice",
+    "salt and finely ground pepper",
+    "thin white fish fillets (bream), skinless and boneless",
+    "salt and pepper",
+    "white flour",
+    "canola oil"
+   ]
+  }
+ },
+ {
+  "id": "6a446cd3d9f5",
+  "slim": {
+   "id": "6a446cd3d9f5",
+   "kcal": 367,
+   "kind": "main",
+   "name": "Brazilian Fish Stew (Moqueca Baiana)",
+   "priced": [
+    {
+     "item": "fish (rohu or similar)",
+     "grams": 125
+    },
+    {
+     "item": "lemon",
+     "grams": 3.8
+    },
+    {
+     "item": "olive oil",
+     "grams": 3.5
+    },
+    {
+     "item": "olive oil",
+     "grams": 5.3
+    },
+    {
+     "item": "garlic",
+     "grams": 2
+    },
+    {
+     "item": "onion",
+     "grams": 20
+    },
+    {
+     "item": "capsicum",
+     "grams": 45
+    },
+    {
+     "item": "sugar",
+     "grams": 1.5
+    },
+    {
+     "item": "coconut milk",
+     "grams": 100
+    },
+    {
+     "item": "tomato",
+     "grams": 100
+    },
+    {
+     "item": "stock or broth",
+     "grams": 60
+    },
+    {
+     "item": "lemon",
+     "grams": 5.5
+    },
+    {
+     "item": "coriander leaves",
+     "grams": 2.5
+    }
+   ],
+   "source": "RecipeTin Eats",
+   "cuisine": "Other",
+   "dishKey": "brazilian fish stew",
+   "garnish": [
+    "coriander leaves"
+   ],
+   "lastMin": 10,
+   "popular": true,
+   "aheadMin": 28,
+   "category": "meat",
+   "totalMin": 38,
+   "utensils": [],
+   "allergens": [
+    "fish"
+   ],
+   "spiceLevel": "mild",
+   "techniques": [
+    "searing",
+    "sautéing",
+    "simmering"
+   ],
+   "healthFlags": [
+    "high fat"
+   ],
+   "allergenUnsure": [
+    "celery",
+    "sulphites"
+   ],
+   "keyIngredients": [
+    "white fish",
+    "coconut milk",
+    "crushed tomatoes",
+    "red capsicum"
+   ],
+   "ingredientNames": [
+    "white fish fillet",
+    "lime juice",
+    "salt",
+    "black pepper",
+    "olive oil",
+    "olive oil or coconut oil",
+    "garlic",
+    "onion",
+    "red capsicum",
+    "sugar",
+    "cumin powder",
+    "paprika",
+    "cayenne pepper",
+    "salt",
+    "coconut milk",
+    "crushed tomatoes",
+    "fish stock",
+    "lime juice"
+   ]
+  }
+ },
+ {
+  "id": "6b1855ccff95",
+  "slim": {
+   "id": "6b1855ccff95",
+   "kcal": 40,
+   "kind": "main",
+   "name": "Masala Dosa",
+   "priced": [
+    {
+     "item": "rice",
+     "grams": 20
+    },
+    {
+     "item": "urad dal",
+     "grams": 6.3
+    },
+    {
+     "item": "toor dal",
+     "grams": 0.8
+    },
+    {
+     "item": "chana dal",
+     "grams": 0.8
+    },
+    {
+     "item": "poha",
+     "grams": 2.7
+    },
+    {
+     "item": "cooking oil",
+     "grams": 0.9
+    },
+    {
+     "item": "urad dal",
+     "grams": 0.1
+    },
+    {
+     "item": "chana dal",
+     "grams": 0.1
+    },
+    {
+     "item": "curry leaves",
+     "grams": 0.1
+    },
+    {
+     "item": "green chilli",
+     "grams": 0.3
+    },
+    {
+     "item": "ginger",
+     "grams": 0.2
+    },
+    {
+     "item": "onion",
+     "grams": 3.7
+    },
+    {
+     "item": "potato",
+     "grams": 15
+    },
+    {
+     "item": "coriander leaves",
+     "grams": 0.2
+    },
+    {
+     "item": "lemon",
+     "grams": 1
+    }
+   ],
+   "source": "Hebbars Kitchen",
+   "cuisine": "South Indian",
+   "dishKey": "masala dosa",
+   "garnish": [
+    "coriander leaves"
+   ],
+   "lastMin": 60,
+   "popular": true,
+   "aheadMin": 45,
+   "category": "vegetarian",
+   "totalMin": 105,
+   "utensils": [
+    "mixer-grinder",
+    "tawa",
+    "kadhai"
+   ],
+   "allergens": [
+    "milk",
+    "mustard"
+   ],
+   "spiceLevel": "mild",
+   "techniques": [
+    "wet grinding",
+    "fermenting",
+    "tempering",
+    "tawa roasting"
+   ],
+   "healthFlags": [],
+   "allergenUnsure": [
+    "gluten"
+   ],
+   "keyIngredients": [
+    "urad dal",
+    "sona masuri rice",
+    "poha",
+    "potato"
+   ],
+   "ingredientNames": [
+    "sona masuri rice",
+    "methi seeds",
+    "water",
+    "urad dal",
+    "toor dal",
+    "chana dal",
+    "poha",
+    "cooking oil",
+    "mustard seeds",
+    "urad dal",
+    "chana dal",
+    "dried red chilli",
+    "curry leaves",
+    "hing",
+    "green chilli",
+    "ginger",
+    "onion",
+    "turmeric",
+    "salt",
+    "potato",
+    "lemon juice"
+   ]
+  }
+ },
+ {
+  "id": "744dcc5f1955",
+  "slim": {
+   "id": "744dcc5f1955",
+   "kcal": 390,
+   "kind": "main",
+   "name": "Crispy Baked Shrimp in Lemon Butter Sauce",
+   "priced": [
+    {
+     "item": "prawns",
+     "grams": 125
+    },
+    {
+     "item": "butter",
+     "grams": 18.8
+    },
+    {
+     "item": "lemon",
+     "grams": 7.5
+    },
+    {
+     "item": "garlic",
+     "grams": 2.3
+    },
+    {
+     "item": "bread",
+     "grams": 15
+    },
+    {
+     "item": "cheese",
+     "grams": 6.3
+    },
+    {
+     "item": "olive oil",
+     "grams": 5
+    },
+    {
+     "item": "lemon",
+     "grams": 15
+    }
+   ],
+   "source": "RecipeTin Eats",
+   "cuisine": "Other",
+   "dishKey": "crispy baked shrimp lemon butter sauce",
+   "garnish": [
+    "finely chopped parsley",
+    "lemon"
+   ],
+   "lastMin": 3,
+   "popular": true,
+   "aheadMin": 23,
+   "category": "meat",
+   "totalMin": 26,
+   "utensils": [
+    "oven"
+   ],
+   "allergens": [
+    "gluten",
+    "crustaceans",
+    "milk",
+    "celery",
+    "sulphites"
+   ],
+   "spiceLevel": "none",
+   "techniques": [
+    "baking",
+    "broiling"
+   ],
+   "healthFlags": [
+    "high fat",
+    "refined flour"
+   ],
+   "allergenUnsure": [],
+   "keyIngredients": [
+    "prawns",
+    "butter",
+    "white wine",
+    "panko breadcrumbs"
+   ],
+   "ingredientNames": [
+    "prawns",
+    "dry white wine",
+    "unsalted butter",
+    "lemon juice",
+    "garlic",
+    "salt",
+    "pepper",
+    "panko breadcrumbs",
+    "parmesan",
+    "salt",
+    "olive oil"
+   ]
+  }
+ },
+ {
+  "id": "76fb77fbb012",
+  "slim": {
+   "id": "76fb77fbb012",
+   "kcal": 320,
+   "kind": "main",
+   "name": "Chole Pindi (Spicy Chickpea Curry)",
+   "priced": [
+    {
+     "item": "black chana",
+     "grams": 45
+    },
+    {
+     "item": "onion",
+     "grams": 27.5
+    },
+    {
+     "item": "ginger",
+     "grams": 2.5
+    },
+    {
+     "item": "green chilli",
+     "grams": 1.5
+    },
+    {
+     "item": "tomato",
+     "grams": 31.3
+    },
+    {
+     "item": "cooking oil",
+     "grams": 5
+    },
+    {
+     "item": "ginger",
+     "grams": 2
+    },
+    {
+     "item": "lemon",
+     "grams": 7.5
+    }
+   ],
+   "source": "Archana's Kitchen",
+   "cuisine": "North Indian",
+   "dishKey": "chole pindi spicy chickpea curry",
+   "garnish": [
+    "ginger",
+    "lemon"
+   ],
+   "lastMin": 25,
+   "popular": false,
+   "aheadMin": 15,
+   "category": "vegan",
+   "totalMin": 40,
+   "utensils": [
+    "pressure-cooker",
+    "kadhai"
+   ],
+   "allergens": [],
+   "spiceLevel": "mild",
+   "techniques": [
+    "pressure cooking",
+    "sauteing",
+    "simmering"
+   ],
+   "healthFlags": [],
+   "allergenUnsure": [],
+   "keyIngredients": [
+    "black chana",
+    "tomato",
+    "onion",
+    "pomegranate seed powder"
+   ],
+   "ingredientNames": [
+    "black chana",
+    "cardamom",
+    "onion",
+    "cinnamon",
+    "green chilli",
+    "tomato puree",
+    "turmeric powder",
+    "pomegranate seed powder",
+    "amchur or lemon juice",
+    "cooking oil or ghee",
+    "salt",
+    "ginger"
+   ]
+  }
+ },
+ {
+  "id": "841c2ecd3a5d",
+  "slim": {
+   "id": "841c2ecd3a5d",
+   "kcal": 35,
+   "kind": "side",
+   "name": "Apple Cucumber Salad",
+   "priced": [
+    {
+     "item": "apple",
+     "grams": 45
+    },
+    {
+     "item": "cucumber",
+     "grams": 75
+    },
+    {
+     "item": "mint leaves",
+     "grams": 1.3
+    },
+    {
+     "item": "lemon",
+     "grams": 1.3
+    }
+   ],
+   "source": "Archana's Kitchen",
+   "cuisine": "Other",
+   "dishKey": "apple cucumber salad",
+   "garnish": [
+    "mint leaves"
+   ],
+   "lastMin": 6,
+   "popular": true,
+   "aheadMin": 0,
+   "category": "vegetarian",
+   "totalMin": 6,
+   "utensils": [],
+   "allergens": [],
+   "spiceLevel": "none",
+   "techniques": [
+    "tossing",
+    "chopping"
+   ],
+   "healthFlags": [],
+   "allergenUnsure": [],
+   "keyIngredients": [
+    "apple",
+    "cucumber",
+    "mint leaves",
+    "black pepper"
+   ],
+   "ingredientNames": [
+    "apple",
+    "cucumber",
+    "salt",
+    "black pepper",
+    "lemon juice"
+   ]
+  }
+ },
+ {
+  "id": "9d41fc2ec569",
+  "slim": {
+   "id": "9d41fc2ec569",
+   "kcal": 950,
+   "kind": "main",
+   "name": "Garlic Chutney",
+   "priced": [
+    {
+     "item": "ghee",
+     "grams": 60
+    },
+    {
+     "item": "urad dal",
+     "grams": 4
+    },
+    {
+     "item": "garlic",
+     "grams": 90
+    },
+    {
+     "item": "grated coconut",
+     "grams": 20
+    },
+    {
+     "item": "tomato",
+     "grams": 100
+    },
+    {
+     "item": "tamarind",
+     "grams": 240
+    },
+    {
+     "item": "jaggery",
+     "grams": 3
+    }
+   ],
+   "source": "Hebbars Kitchen",
+   "cuisine": "South Indian",
+   "dishKey": "garlic chutney",
+   "garnish": [],
+   "lastMin": 8,
+   "popular": true,
+   "aheadMin": 18,
+   "category": "vegetarian",
+   "totalMin": 26,
+   "utensils": [
+    "kadhai",
+    "mixer-grinder"
+   ],
+   "allergens": [
+    "milk",
+    "mustard"
+   ],
+   "spiceLevel": "hot",
+   "techniques": [
+    "tempering",
+    "sauteing",
+    "simmering"
+   ],
+   "healthFlags": [
+    "high fat"
+   ],
+   "allergenUnsure": [
+    "gluten"
+   ],
+   "keyIngredients": [
+    "garlic",
+    "tamarind",
+    "dried red chilli",
+    "ghee"
+   ],
+   "ingredientNames": [
+    "ghee",
+    "mustard seeds",
+    "urad dal",
+    "hing",
+    "garlic",
+    "grated coconut",
+    "mustard seeds",
+    "tomato",
+    "dried red chilli",
+    "tamarind extract",
+    "turmeric",
+    "salt",
+    "jaggery"
+   ]
+  }
+ },
+ {
+  "id": "a476d71ae660",
+  "slim": {
+   "id": "a476d71ae660",
+   "kcal": 93,
+   "kind": "main",
+   "name": "Cranberry Sauce",
+   "priced": [
+    {
+     "item": "sugar",
+     "grams": 16.7
+    },
+    {
+     "item": null,
+     "grams": 56.7
+    },
+    {
+     "item": null,
+     "grams": 13.3
+    }
+   ],
+   "source": "Budget Bytes",
+   "cuisine": "Other",
+   "dishKey": "cranberry sauce",
+   "garnish": [],
+   "lastMin": 0,
+   "popular": false,
+   "aheadMin": 17,
+   "category": "vegan",
+   "totalMin": 17,
+   "utensils": [],
+   "allergens": [],
+   "spiceLevel": "none",
+   "techniques": [
+    "simmering",
+    "boiling"
+   ],
+   "healthFlags": [
+    "sugary food"
+   ],
+   "allergenUnsure": [],
+   "keyIngredients": [
+    "cranberries",
+    "sugar",
+    "orange"
+   ],
+   "ingredientNames": [
+    "sugar",
+    "water",
+    "cranberries",
+    "orange"
+   ]
+  }
+ },
+ {
+  "id": "aa29944907ec",
+  "slim": {
+   "id": "aa29944907ec",
+   "kcal": 520,
+   "kind": "main",
+   "name": "Crispy Chili Garlic Tofu",
+   "priced": [
+    {
+     "item": "cooking oil",
+     "grams": 10
+    },
+    {
+     "item": "tofu",
+     "grams": 226.8
+    },
+    {
+     "item": "garlic",
+     "grams": 18.8
+    },
+    {
+     "item": "green chilli",
+     "grams": 7.5
+    },
+    {
+     "item": "soy sauce",
+     "grams": 21.3
+    },
+    {
+     "item": "honey",
+     "grams": 27.5
+    },
+    {
+     "item": "sesame seeds",
+     "grams": 0.8
+    }
+   ],
+   "source": "Seonkyoung Longest (Korean)",
+   "cuisine": "Other",
+   "dishKey": "crispy chili garlic tofu ready minutes",
+   "garnish": [
+    "sesame seeds"
+   ],
+   "lastMin": 13,
+   "popular": false,
+   "aheadMin": 5,
+   "category": "meat",
+   "totalMin": 18,
+   "utensils": [],
+   "allergens": [
+    "gluten",
+    "soy",
+    "sesame"
+   ],
+   "spiceLevel": "mild",
+   "techniques": [
+    "pan-frying",
+    "stir-frying"
+   ],
+   "healthFlags": [
+    "sugary food",
+    "high salt"
+   ],
+   "allergenUnsure": [
+    "crustaceans",
+    "sulphites"
+   ],
+   "keyIngredients": [
+    "super firm tofu",
+    "garlic",
+    "chili",
+    "soy sauce"
+   ],
+   "ingredientNames": [
+    "avocado oil",
+    "super firm tofu",
+    "garlic cloves",
+    "serrano or jalapeno chilli",
+    "soy sauce",
+    "agave nectar",
+    "black pepper"
+   ]
+  }
+ },
+ {
+  "id": "b316e02f7026",
+  "slim": {
+   "id": "b316e02f7026",
+   "kcal": 720,
+   "kind": "main",
+   "name": "Korean Stone Pot Bibimbap (Dolsot Bibimbap with Beef and Vegetables)",
+   "priced": [
+    {
+     "item": "garlic",
+     "grams": 1.3
+    },
+    {
+     "item": "apple",
+     "grams": 14.3
+    },
+    {
+     "item": "onion",
+     "grams": 14.3
+    },
+    {
+     "item": "soy sauce",
+     "grams": 2
+    },
+    {
+     "item": "lemon",
+     "grams": 3.8
+    },
+    {
+     "item": "sugar",
+     "grams": 3
+    },
+    {
+     "item": "sesame oil",
+     "grams": 3.5
+    },
+    {
+     "item": "soy sauce",
+     "grams": 7.5
+    },
+    {
+     "item": "sesame oil",
+     "grams": 3.5
+    },
+    {
+     "item": "sugar",
+     "grams": 6.3
+    },
+    {
+     "item": "sesame oil",
+     "grams": 1.3
+    },
+    {
+     "item": "zucchini",
+     "grams": 50
+    },
+    {
+     "item": "zucchini",
+     "grams": 50
+    },
+    {
+     "item": "carrot",
+     "grams": 45
+    },
+    {
+     "item": "mushroom",
+     "grams": 35
+    },
+    {
+     "item": "spinach",
+     "grams": 25
+    },
+    {
+     "item": "rice",
+     "grams": 200
+    },
+    {
+     "item": "eggs",
+     "grams": 50
+    },
+    {
+     "item": "sesame seeds",
+     "grams": 0.5
+    }
+   ],
+   "source": "Seonkyoung Longest (Korean)",
+   "cuisine": "Other",
+   "dishKey": "korean stone pot bibimbap dolsot beef vegetables",
+   "garnish": [
+    "eggs",
+    "toasted sesame seeds"
+   ],
+   "lastMin": 36,
+   "popular": false,
+   "aheadMin": 25,
+   "category": "meat",
+   "totalMin": 61,
+   "utensils": [
+    "non-stick-pan"
+   ],
+   "allergens": [
+    "eggs",
+    "soy",
+    "sesame"
+   ],
+   "spiceLevel": "medium",
+   "techniques": [
+    "stir-frying",
+    "sauteing",
+    "marinating"
+   ],
+   "healthFlags": [
+    "red meat",
+    "sugary food",
+    "high salt"
+   ],
+   "allergenUnsure": [
+    "gluten",
+    "sulphites"
+   ],
+   "keyIngredients": [
+    "beef",
+    "gochujang",
+    "short grain rice",
+    "mixed vegetables"
+   ],
+   "ingredientNames": [
+    "garlic",
+    "fuji apple",
+    "onion",
+    "soy sauce",
+    "gochujang",
+    "lemon juice",
+    "mirin",
+    "sugar",
+    "sesame oil",
+    "black pepper",
+    "beef",
+    "soy sauce",
+    "mirin",
+    "sesame oil",
+    "sugar",
+    "black pepper",
+    "sesame oil",
+    "salt",
+    "zucchini",
+    "yellow squash",
+    "carrot",
+    "shiitake mushrooms",
+    "mung bean sprouts side dish",
+    "spinach side dish",
+    "radish or cucumber side dish",
+    "kimchi",
+    "short grain rice"
+   ]
+  }
+ },
+ {
+  "id": "b354b90de002",
+  "slim": {
+   "id": "b354b90de002",
+   "kcal": 238,
+   "kind": "side",
+   "name": "Easy Hollandaise Sauce",
+   "priced": [
+    {
+     "item": "eggs",
+     "grams": 9
+    },
+    {
+     "item": "lemon",
+     "grams": 4
+    },
+    {
+     "item": "butter",
+     "grams": 28.5
+    }
+   ],
+   "source": "Budget Bytes",
+   "cuisine": "Other",
+   "dishKey": "hollandaise sauce",
+   "garnish": [],
+   "lastMin": 5,
+   "popular": true,
+   "aheadMin": 3,
+   "category": "egg",
+   "totalMin": 8,
+   "utensils": [],
+   "allergens": [
+    "eggs",
+    "milk"
+   ],
+   "spiceLevel": "mild",
+   "techniques": [
+    "whisking",
+    "gentle heating",
+    "emulsifying"
+   ],
+   "healthFlags": [
+    "high fat"
+   ],
+   "allergenUnsure": [],
+   "keyIngredients": [
+    "egg yolk",
+    "butter",
+    "lemon juice"
+   ],
+   "ingredientNames": [
+    "egg yolk",
+    "water",
+    "lemon juice",
+    "salted butter",
+    "salt",
+    "cayenne pepper"
+   ]
+  }
+ },
+ {
+  "id": "b9129fe3a95f",
+  "slim": {
+   "id": "b9129fe3a95f",
+   "kcal": 432,
+   "kind": "main",
+   "name": "Easy Coconut Curry Sauce",
+   "priced": [
+    {
+     "item": "cooking oil",
+     "grams": 5.6
+    },
+    {
+     "item": "garlic",
+     "grams": 3.2
+    },
+    {
+     "item": "ginger",
+     "grams": 1.2
+    },
+    {
+     "item": "onion",
+     "grams": 11
+    },
+    {
+     "item": "coconut milk",
+     "grams": 80
+    },
+    {
+     "item": "stock or broth",
+     "grams": 48
+    },
+    {
+     "item": "tomato ketchup or puree",
+     "grams": 25
+    },
+    {
+     "item": "masoor dal",
+     "grams": 48
+    },
+    {
+     "item": "pumpkin",
+     "grams": 50
+    },
+    {
+     "item": "spinach",
+     "grams": 12
+    },
+    {
+     "item": "cashews",
+     "grams": 15
+    },
+    {
+     "item": "coriander leaves",
+     "grams": 1
+    },
+    {
+     "item": "cashews",
+     "grams": 3
+    }
+   ],
+   "source": "RecipeTin Eats",
+   "cuisine": "Other",
+   "dishKey": "coconut curry sauce",
+   "garnish": [
+    "coriander leaves",
+    "chopped cashews"
+   ],
+   "lastMin": 5,
+   "popular": true,
+   "aheadMin": 20,
+   "category": "meat",
+   "totalMin": 25,
+   "utensils": [],
+   "allergens": [
+    "milk",
+    "tree-nuts"
+   ],
+   "spiceLevel": "none",
+   "techniques": [
+    "sautéing",
+    "simmering"
+   ],
+   "healthFlags": [
+    "high fat"
+   ],
+   "allergenUnsure": [
+    "celery",
+    "mustard"
+   ],
+   "keyIngredients": [
+    "coconut milk",
+    "brown lentils",
+    "pumpkin",
+    "curry powder"
+   ],
+   "ingredientNames": [
+    "coconut oil",
+    "garlic",
+    "ginger",
+    "onion",
+    "coconut milk",
+    "chicken broth",
+    "tomato passata",
+    "brown lentils (canned, drained)",
+    "pumpkin",
+    "baby spinach",
+    "cashews",
+    "salt and black pepper",
+    "garam masala",
+    "curry powder",
+    "cumin",
+    "coriander powder",
+    "paprika",
+    "turmeric powder"
+   ]
+  }
+ },
+ {
+  "id": "ba8a5c70c6c4",
+  "slim": {
+   "id": "ba8a5c70c6c4",
+   "kcal": 110,
+   "kind": "main",
+   "name": "Instant Khaman Dhokla (Steamed Gram Flour Cake)",
+   "priced": [
+    {
+     "item": "besan",
+     "grams": 9
+    },
+    {
+     "item": "rava (semolina)",
+     "grams": 1.3
+    },
+    {
+     "item": "ginger",
+     "grams": 0.2
+    },
+    {
+     "item": "green chilli",
+     "grams": 0.5
+    },
+    {
+     "item": "sugar",
+     "grams": 0.2
+    },
+    {
+     "item": "lemon",
+     "grams": 0.8
+    },
+    {
+     "item": "cooking oil",
+     "grams": 0.7
+    },
+    {
+     "item": "cooking oil",
+     "grams": 0.6
+    },
+    {
+     "item": "sesame seeds",
+     "grams": 0.2
+    },
+    {
+     "item": "curry leaves",
+     "grams": 0.1
+    },
+    {
+     "item": "green chilli",
+     "grams": 0.5
+    },
+    {
+     "item": "sugar",
+     "grams": 0.2
+    },
+    {
+     "item": "lemon",
+     "grams": 0.3
+    },
+    {
+     "item": "grated coconut",
+     "grams": 0.5
+    },
+    {
+     "item": "coriander leaves",
+     "grams": 0.2
+    }
+   ],
+   "source": "Hebbars Kitchen",
+   "cuisine": "Other Indian",
+   "dishKey": "khaman dhokla steamed gram flour cake hindi",
+   "garnish": [
+    "grated coconut",
+    "coriander leaves"
+   ],
+   "lastMin": 16,
+   "popular": false,
+   "aheadMin": 46,
+   "category": "vegetarian",
+   "totalMin": 62,
+   "utensils": [
+    "steamer"
+   ],
+   "allergens": [
+    "mustard",
+    "sesame"
+   ],
+   "spiceLevel": "mild",
+   "techniques": [
+    "steaming",
+    "tempering"
+   ],
+   "healthFlags": [
+    "refined flour"
+   ],
+   "allergenUnsure": [
+    "gluten",
+    "sulphites",
+    "lupin"
+   ],
+   "keyIngredients": [
+    "besan",
+    "eno fruit salt",
+    "mustard seeds",
+    "coconut"
+   ],
+   "ingredientNames": [
+    "besan",
+    "semolina",
+    "ginger paste",
+    "green chilli",
+    "turmeric",
+    "sugar",
+    "asafoetida",
+    "salt",
+    "lemon juice",
+    "cooking oil",
+    "water",
+    "eno fruit salt",
+    "cooking oil",
+    "mustard seeds",
+    "cumin seeds",
+    "sesame seeds",
+    "asafoetida",
+    "curry leaves",
+    "green chilli",
+    "water",
+    "sugar",
+    "salt",
+    "lemon juice"
+   ]
+  }
+ },
+ {
+  "id": "d2a4fa114cd7",
+  "slim": {
+   "id": "d2a4fa114cd7",
+   "kcal": 432,
+   "kind": "main",
+   "name": "Chicken Brine",
+   "priced": [
+    {
+     "item": "lemon",
+     "grams": 24
+    },
+    {
+     "item": "leafy greens",
+     "grams": 2
+    },
+    {
+     "item": "honey",
+     "grams": 17
+    },
+    {
+     "item": "garlic",
+     "grams": 6
+    },
+    {
+     "item": "chicken",
+     "grams": 350
+    },
+    {
+     "item": "butter",
+     "grams": 8
+    }
+   ],
+   "source": "RecipeTin Eats",
+   "cuisine": "Other",
+   "dishKey": "chicken brine",
+   "garnish": [],
+   "lastMin": 10,
+   "popular": true,
+   "aheadMin": 88,
+   "category": "meat",
+   "totalMin": 98,
+   "utensils": [
+    "oven"
+   ],
+   "allergens": [
+    "milk"
+   ],
+   "spiceLevel": "none",
+   "techniques": [
+    "brining",
+    "roasting",
+    "basting"
+   ],
+   "healthFlags": [
+    "high fat"
+   ],
+   "allergenUnsure": [],
+   "keyIngredients": [
+    "chicken",
+    "kosher salt",
+    "honey",
+    "butter"
+   ],
+   "ingredientNames": [
+    "water",
+    "kosher or cooking salt",
+    "lemons",
+    "parsley",
+    "thyme",
+    "rosemary",
+    "bay leaves",
+    "honey",
+    "garlic",
+    "black peppercorns",
+    "whole chicken",
+    "butter",
+    "salt and pepper"
+   ]
+  }
+ },
+ {
+  "id": "f23aea8780be",
+  "slim": {
+   "id": "f23aea8780be",
+   "kcal": 380,
+   "kind": "main",
+   "name": "Masala Dosa (Crispy Rice Crepe with Spiced Potato Filling)",
+   "priced": [
+    {
+     "item": "rice",
+     "grams": 63.8
+    },
+    {
+     "item": "rice",
+     "grams": 63.8
+    },
+    {
+     "item": "urad dal",
+     "grams": 47.5
+    },
+    {
+     "item": "chana dal",
+     "grams": 5
+    },
+    {
+     "item": "urad dal",
+     "grams": 5
+    },
+    {
+     "item": "poha",
+     "grams": 18.8
+    },
+    {
+     "item": "cooking oil",
+     "grams": 6.3
+    },
+    {
+     "item": "urad dal",
+     "grams": 0.5
+    },
+    {
+     "item": "chana dal",
+     "grams": 0.5
+    },
+    {
+     "item": "curry leaves",
+     "grams": 1.3
+    },
+    {
+     "item": "green chilli",
+     "grams": 2.5
+    },
+    {
+     "item": "ginger",
+     "grams": 1.3
+    },
+    {
+     "item": "onion",
+     "grams": 25
+    },
+    {
+     "item": "potato",
+     "grams": 150
+    },
+    {
+     "item": "lemon",
+     "grams": 3.8
+    },
+    {
+     "item": "coriander leaves",
+     "grams": 1.3
+    }
+   ],
+   "source": "Hebbars Kitchen",
+   "cuisine": "South Indian",
+   "dishKey": "masala dosa crispy rice crepe spiced potato filling hotel",
+   "garnish": [],
+   "lastMin": 32,
+   "popular": false,
+   "aheadMin": 47,
+   "category": "vegetarian",
+   "totalMin": 79,
+   "utensils": [
+    "mixer-grinder",
+    "kadhai",
+    "tawa"
+   ],
+   "allergens": [
+    "milk",
+    "mustard"
+   ],
+   "spiceLevel": "medium",
+   "techniques": [
+    "wet grinding",
+    "tempering",
+    "tawa roasting"
+   ],
+   "healthFlags": [],
+   "allergenUnsure": [
+    "gluten"
+   ],
+   "keyIngredients": [
+    "urad dal",
+    "raw rice",
+    "potato",
+    "poha"
+   ],
+   "ingredientNames": [
+    "red rice",
+    "raw rice",
+    "methi seeds",
+    "urad dal",
+    "chana dal",
+    "urad dal",
+    "poha",
+    "cooking oil",
+    "mustard seeds",
+    "urad dal",
+    "chana dal",
+    "asafoetida (hing)",
+    "curry leaves",
+    "green chilli",
+    "ginger",
+    "onion",
+    "turmeric",
+    "potato",
+    "salt",
+    "lemon juice",
+    "coriander leaves"
+   ]
+  }
+ },
+ {
+  "id": "f50b786c9ec4",
+  "slim": {
+   "id": "f50b786c9ec4",
+   "kcal": 369,
+   "kind": "main",
+   "name": "Jewelled Rice Pilaf (Persian Rice with Dried Fruit and Nuts)",
+   "priced": [
+    {
+     "item": "ghee",
+     "grams": 5
+    },
+    {
+     "item": "onion",
+     "grams": 18.3
+    },
+    {
+     "item": "garlic",
+     "grams": 1
+    },
+    {
+     "item": "basmati rice",
+     "grams": 46.7
+    },
+    {
+     "item": "stock or broth",
+     "grams": 88.3
+    },
+    {
+     "item": "lemon",
+     "grams": 0.2
+    },
+    {
+     "item": null,
+     "grams": 5.8
+    },
+    {
+     "item": null,
+     "grams": 5.8
+    },
+    {
+     "item": null,
+     "grams": 5.8
+    },
+    {
+     "item": null,
+     "grams": 5
+    },
+    {
+     "item": "almonds",
+     "grams": 5
+    },
+    {
+     "item": "ghee",
+     "grams": 5
+    },
+    {
+     "item": null,
+     "grams": 15
+    },
+    {
+     "item": "coriander leaves",
+     "grams": 0.8
+    },
+    {
+     "item": null,
+     "grams": 1.7
+    }
+   ],
+   "source": "RecipeTin Eats",
+   "cuisine": "Middle Eastern",
+   "dishKey": "jewelled rice pilaf persian dried fruit nuts",
+   "garnish": [
+    "pomegranate seeds",
+    "coriander leaves",
+    "roughly chopped toasted pistachios"
+   ],
+   "lastMin": 6,
+   "popular": false,
+   "aheadMin": 30,
+   "category": "meat",
+   "totalMin": 36,
+   "utensils": [],
+   "allergens": [
+    "milk",
+    "tree-nuts"
+   ],
+   "spiceLevel": "none",
+   "techniques": [
+    "sautéing",
+    "simmering",
+    "resting",
+    "toasting nuts"
+   ],
+   "healthFlags": [
+    "high fat"
+   ],
+   "allergenUnsure": [
+    "celery",
+    "sulphites"
+   ],
+   "keyIngredients": [
+    "basmati rice",
+    "saffron",
+    "dried fruit",
+    "pistachios"
+   ],
+   "ingredientNames": [
+    "saffron threads",
+    "boiling water",
+    "ghee or butter",
+    "fennel seeds",
+    "cumin seeds",
+    "onion",
+    "garlic",
+    "cinnamon stick",
+    "allspice",
+    "cardamom powder",
+    "basmati rice",
+    "vegetable stock",
+    "salt",
+    "bay leaves",
+    "lemon zest",
+    "dried cranberries",
+    "dried apricots",
+    "golden raisins",
+    "pistachios",
+    "slivered almonds",
+    "ghee or butter, melted"
+   ]
+  }
+ },
+ {
+  "id": "fbb4b4ef81fb",
+  "slim": {
+   "id": "fbb4b4ef81fb",
+   "kcal": 411,
+   "kind": "main",
+   "name": "Golden Cabbage Soup (Fennel, Cabbage and White Bean Soup with Miso)",
+   "priced": [
+    {
+     "item": "olive oil",
+     "grams": 14
+    },
+    {
+     "item": null,
+     "grams": 71.3
+    },
+    {
+     "item": "cabbage",
+     "grams": 112.5
+    },
+    {
+     "item": "garlic",
+     "grams": 6
+    },
+    {
+     "item": "tomato ketchup or puree",
+     "grams": 7.5
+    },
+    {
+     "item": "potato",
+     "grams": 85
+    },
+    {
+     "item": "stock or broth",
+     "grams": 240
+    },
+    {
+     "item": "kidney beans (canned)",
+     "grams": 106.3
+    },
+    {
+     "item": "milk",
+     "grams": 60
+    },
+    {
+     "item": "leafy greens",
+     "grams": 4
+    },
+    {
+     "item": "lemon",
+     "grams": 15
+    }
+   ],
+   "source": "Rainbow Plant Life (vegan)",
+   "cuisine": "Other",
+   "dishKey": "golden cabbage soup fennel white bean miso",
+   "garnish": [
+    "flat-leaf parsley and fresh dill leaves",
+    "lemon, zested",
+    "flaky sea salt"
+   ],
+   "lastMin": 2,
+   "popular": true,
+   "aheadMin": 46,
+   "category": "vegetarian",
+   "totalMin": 48,
+   "utensils": [],
+   "allergens": [
+    "soy",
+    "milk"
+   ],
+   "spiceLevel": "mild",
+   "techniques": [
+    "sautéing",
+    "simmering",
+    "whisking"
+   ],
+   "healthFlags": [],
+   "allergenUnsure": [
+    "gluten",
+    "celery"
+   ],
+   "keyIngredients": [
+    "fennel bulb",
+    "green cabbage",
+    "cannellini beans",
+    "white miso"
+   ],
+   "ingredientNames": [
+    "extra virgin olive oil",
+    "fennel bulb",
+    "kosher salt and black pepper",
+    "green cabbage, chopped",
+    "garlic",
+    "fennel seeds, crushed",
+    "dried thyme",
+    "red pepper flakes",
+    "tomato paste",
+    "yukon gold potatoes",
+    "vegetable broth",
+    "cannellini beans, drained and rinsed",
+    "bay leaf",
+    "white miso",
+    "soy milk",
+    "nutritional yeast"
+   ]
+  }
+ }
+]

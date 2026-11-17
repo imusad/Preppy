@@ -4,10 +4,14 @@ import { MINOR_COST_PER_SERVING_INR } from '@/lib/data/priceItems';
 import { DIETS_FOR, type SlimRecipe } from '@/lib/library/types';
 import { dishKey } from '@/lib/library/dishKey';
 import { INGREDIENT_TERMS, mentions } from '@/lib/library/wordlist';
+import { spiceOf, withinSpice, SPICE_ORDER, type SpiceLevel } from '@/lib/library/spice';
+import { chartTagsOf, proteinRich, tagsMet, type ChartTag } from '@/lib/planner/chartFit';
 import { settings, type HealthFlag } from '@/lib/settings';
 import type { AllergenId, Diet, Person, Setup } from '@/lib/types';
 
 /** A typed "Other" restriction after it has been interpreted. */
+export { proteinRich };
+
 export interface TypedRule {
   text: string;
   /** Allergy or medical: also applies to garnish and to anything the AI check was unsure of. */
@@ -17,6 +21,12 @@ export interface TypedRule {
   noun: string;
   /** Whole cuisines this entry rules out, e.g. "no Indian spices" → the Indian cuisines. */
   avoidCuisines?: string[];
+  /** Recipes that contain these are still fine, e.g. "cauliflower rice" for a no-rice rule. */
+  except?: string[];
+  /** Hottest dish allowed, from "nothing spicy" (mild) or "no chilli" (none). null or missing = no limit. */
+  maxSpice?: SpiceLevel | null;
+  /** Where it came from: typed by the cook, or read from the diet chart. Chart rules are matched by words only (no AI check). */
+  source?: 'typed' | 'chart';
 }
 
 export interface PlannerExtras {
@@ -42,8 +52,12 @@ export interface Group {
   favCuisines: Set<string>;
   utensils: Set<string>;
   chartAvoid: HealthFlag[];
-  /** A member's chart asks for high or lean protein, or their goal is to build muscle. */
+  /** A member's chart asks for high or lean protein. */
   wantsProtein: boolean;
+  /** Kinds of food the members' charts favour (protein, fibre, low oil...). */
+  chartTags: ChartTag[];
+  /** Hottest dish allowed for this group; null = no limit. */
+  maxSpice: SpiceLevel | null;
   /** Calories one lunch or dinner should provide; null when no chart states a target. */
   mealKcal: number | null;
   aiExcluded: Set<string>;
@@ -56,9 +70,20 @@ function real(list: string[]): string[] {
   return list.filter((x) => x.toLowerCase() !== 'none');
 }
 
+/** Two people share a dish group only when their diet charts ask for the same things. */
+function chartKey(p: Person): string {
+  const c = p.chartAccepted ? p.chart : null;
+  if (!c) return 'nochart';
+  return [
+    c.calories === null ? '' : Math.round(c.calories / 200) * 200, c.mealKcal ? Math.round(c.mealKcal / 100) * 100 : '',
+    [...c.avoid].sort().join(','), [...(c.avoidFoods ?? [])].map((f) => f.toLowerCase().trim()).sort().join(','),
+    chartTagsOf(c.recipeTypes).sort().join(','),
+  ].join('/');
+}
+
 function personKey(p: Person): string {
   return [
-    p.diet, real(p.restrictions).sort().join(','), p.otherRestrictions.map((s) => s.toLowerCase().trim()).sort().join(','),
+    p.diet, chartKey(p), real(p.restrictions).sort().join(','), p.otherRestrictions.map((s) => s.toLowerCase().trim()).sort().join(','),
     real(p.favourites).map(dishKey).sort().join(','), real(p.leastFavourites).map(dishKey).sort().join(','),
   ].join('|');
 }
@@ -83,9 +108,17 @@ export function formGroups(people: Person[], household: Person[], extras: Planne
         rules.push({ terms: def.terms, except: def.except, strict: t.kind === 'avoid', noun: t.noun ?? t.ingredient, who: names });
       }
     }
-    for (const rule of extras.typed[first.id] ?? []) rules.push({ terms: rule.terms, strict: rule.strict, noun: rule.noun, who: names });
+    for (const rule of extras.typed[first.id] ?? []) {
+      if (rule.terms.length) rules.push({ terms: rule.terms, except: rule.except, strict: rule.strict, noun: rule.noun, who: names });
+    }
+    const spiceLimits = (extras.typed[first.id] ?? []).map((r) => r.maxSpice).filter((m): m is SpiceLevel => Boolean(m));
+    const maxSpice = spiceLimits.length ? spiceLimits.reduce((a, b) => (SPICE_ORDER.indexOf(a) <= SPICE_ORDER.indexOf(b) ? a : b)) : null;
+    const chartTags = [...new Set(members.flatMap((m) => (m.chartAccepted ? chartTagsOf(m.chart?.recipeTypes ?? []) : [])))];
     const favourites = real(first.favourites).map(dishKey);
-    const targets = members.map((m) => (m.chartAccepted ? m.chart?.calories : null)).filter((c): c is number => typeof c === 'number');
+    // A meal's calories: what the chart's own lunch/dinner options show, otherwise a share of the daily target.
+    const targets = members
+      .map((m) => (!m.chartAccepted ? null : m.chart?.mealKcal ?? (typeof m.chart?.calories === 'number' ? m.chart.calories * settings.mealCalorieShare : null)))
+      .filter((c): c is number => typeof c === 'number');
     return {
       key, names, servings: members.length, diet: first.diet as Diet,
       budget: Math.max(...members.map((m) => m.budget ?? 0)),
@@ -95,9 +128,9 @@ export function formGroups(people: Person[], household: Person[], extras: Planne
       favourites,
       favCuisines: new Set(favourites.map((f) => GRID_CUISINE.get(f)).filter((c): c is string => Boolean(c))),
       utensils,
-      wantsProtein: members.some((m) => m.chartAccepted && (m.chart?.recipeTypes ?? []).some((t) => /protein/i.test(t))),
+      wantsProtein: chartTags.includes('protein'), chartTags, maxSpice,
       chartAvoid: [...new Set(members.flatMap((m) => (m.chartAccepted ? (m.chart?.avoid ?? []) : []) as HealthFlag[]))],
-      mealKcal: targets.length ? Math.round((targets.reduce((a, b) => a + b, 0) / targets.length) * settings.mealCalorieShare) : null,
+      mealKcal: targets.length ? Math.round(targets.reduce((a, b) => a + b, 0) / targets.length) : null,
       aiExcluded: new Set(members.flatMap((m) => extras.aiExcluded[m.id] ?? [])),
       avoidCuisines: new Set((extras.typed[first.id] ?? []).flatMap((rule) => rule.avoidCuisines ?? [])),
     };
@@ -121,21 +154,30 @@ export function coreName(name: string): string {
   return [...new Set(name.toLowerCase().split('(')[0].replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2 || /\d/.test(w)).map(stemWord))].sort().join(' ');
 }
 
-const PROTEIN = ['chicken', 'mutton', 'lamb', 'goat', 'beef', 'pork', 'turkey', 'fish', 'salmon', 'tuna', 'cod', 'basa', 'prawn', 'shrimp', 'crab', 'egg',
-  'paneer', 'tofu', 'tempeh', 'chickpea', 'chana', 'lentil', 'dal', 'rajma', 'kidney bean', 'black bean', 'white bean', 'bean', 'edamame', 'soya chunk',
-  'halloumi', 'cottage cheese', 'steak', 'mince', 'keema'];
-
-/** Does the dish have a real protein source among its defining ingredients? */
-export function proteinRich(r: SlimRecipe): boolean {
-  return mentions([...r.keyIngredients, r.name.toLowerCase()], PROTEIN);
-}
-
 /** Dishes that are really accompaniments even when tagged as a main. */
 export function sideLike(r: SlimRecipe): boolean {
   if (/\b(chutney|thogayal|thuvaiyal|pachadi|podi|raita|pickle|achar)\b/i.test(r.name)) return true;
   if (/\b(salad|slaw|coleslaw|bread|toast|fries|straws|chips|hummus|crisps)\b/i.test(r.name) && !proteinRich(r) && (r.kcal ?? 0) < 400) return true;
   if (r.kcal !== null && r.kcal < 150) return true;
   return r.kcal !== null && r.kcal < 180 && !proteinRich(r);
+}
+
+/** Words too general to mark a dish family: "curry" does not make two dishes alike. */
+const GENERIC_HEAD = new Set(['curry', 'rice', 'soup', 'salad', 'sabzi', 'sabji', 'masala', 'fry', 'stir', 'bowl', 'wrap', 'roll', 'sandwich', 'gravy', 'stew',
+  'mix', 'special', 'style', 'recipe', 'dish', 'bake', 'baked', 'grilled', 'roast', 'roasted', 'dry', 'sauce', 'bites', 'balls', 'veg', 'vegetable', 'with', 'and']);
+
+/** The word that names a dish family: "chicken biryani" → "biryani". null when the name is too general. */
+export function dishHead(wanted: string): string | null {
+  const words = wanted.split(' ').filter(Boolean).map(stemWord);
+  const head = words[words.length - 1];
+  return head && head.length > 3 && !GENERIC_HEAD.has(head) ? head : null;
+}
+
+/** Is the recipe the wanted dish itself, or from the same dish family (any biryani for "chicken biryani")? */
+export function inspiredBy(recipeKey: string, wanted: string): 'exact' | 'family' | null {
+  if (sameDish(recipeKey, wanted)) return 'exact';
+  const head = dishHead(wanted);
+  return head && new Set(recipeKey.split(' ').map(stemWord)).has(head) ? 'family' : null;
 }
 
 export function sameDish(recipeKey: string, wanted: string): boolean {
@@ -146,9 +188,15 @@ export function sameDish(recipeKey: string, wanted: string): boolean {
 
 export interface Fit { ok: boolean; notes: string[] }
 
+/** Is this recipe a least-favourite dish, or from the same family as one? */
+export function isLeast(g: Group, r: SlimRecipe): boolean {
+  return g.least.some((l) => inspiredBy(r.dishKey, l) !== null);
+}
+
 /** Can this group eat this recipe? Diet, utensils and restrictions are never relaxed. */
 export function fits(g: Group, r: SlimRecipe): Fit {
   const no = { ok: false, notes: [] };
+  if (r.notADish) return no;
   if (!DIETS_FOR[r.category].includes(g.diet)) return no;
   if (r.utensils.some((u) => !g.utensils.has(u))) return no;
   if (g.allergens.some((a) => r.allergens.includes(a) || r.allergenUnsure.includes(a))) return no;
@@ -156,8 +204,15 @@ export function fits(g: Group, r: SlimRecipe): Fit {
   if (g.avoidCuisines.has(r.cuisine)) return no;
   // A sauce, dressing or dip on its own is not a dish to serve.
   if (/\b(sauce|dressing|dip|marinade|seasoning|spice rub|rub|gravy)( for [a-z ]+)?$/i.test(r.name.replace(/\s*\(.*\)\s*$/, ''))) return no;
-  if (g.least.some((l) => sameDish(r.dishKey, l))) return no;
+  // The diet chart is never relaxed: nothing that goes against it is recommended.
+  if (breaksChart(g, r)) return no;
+  if (!withinSpice(spiceOf(r), g.maxSpice)) return no;
   const notes: string[] = [];
+  // A least-favourite dish (or one like it) is kept out unless the diet chart favours that kind of food.
+  if (isLeast(g, r)) {
+    if (tagsMet(g.chartTags.filter((t) => t !== 'lowFat' && t !== 'lowSalt' && t !== 'lowSugar'), r).length === 0) return no;
+    notes.push('On the diet chart, though not a favourite');
+  }
   for (const rule of g.rules) {
     if (mentions([...r.ingredientNames, r.name.toLowerCase()], rule.terms, rule.except)) return no;
     if (mentions(r.garnish, rule.terms, rule.except)) {

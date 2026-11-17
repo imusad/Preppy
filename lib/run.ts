@@ -10,7 +10,9 @@ import { extractRecipe, fetchText } from '@/lib/library/extract';
 import { tagNow } from '@/lib/library/pipeline';
 import { findExtracted, loadFull, loadPrices, loadSlim } from '@/lib/library/store';
 import { DIETS_FOR, type RawRecipe, type SlimRecipe } from '@/lib/library/types';
-import { mealPeople, type PlannerExtras, type TypedRule } from '@/lib/planner/groups';
+import { dishHead, fits, formGroups, mealPeople, type PlannerExtras, type TypedRule } from '@/lib/planner/groups';
+import { spiceLimitFromText } from '@/lib/library/spice';
+import { enforceableFoodTerms } from '@/lib/planner/chartFit';
 import { assemble, schedule } from '@/lib/planner/schedule';
 import { CUISINES, settings } from '@/lib/settings';
 import type { Plan, RunProgress, Setup } from '@/lib/types';
@@ -129,10 +131,12 @@ const RULE_SCHEMA = {
     rules: {
       type: 'array',
       items: {
-        type: 'object', additionalProperties: false, required: ['text', 'strict', 'terms', 'noun', 'avoidCuisines'],
+        type: 'object', additionalProperties: false, required: ['text', 'strict', 'terms', 'noun', 'avoidCuisines', 'except', 'maxSpice'],
         properties: {
           text: { type: 'string' }, strict: { type: 'boolean' }, terms: { type: 'array', items: { type: 'string' } }, noun: { type: 'string' },
           avoidCuisines: { type: 'array', items: { type: 'string', enum: CUISINES.filter((c) => c !== 'Other') } },
+          except: { type: 'array', items: { type: 'string' } },
+          maxSpice: { type: ['string', 'null'], enum: ['none', 'mild', 'medium', null] },
         },
       },
     },
@@ -145,22 +149,51 @@ export async function stepPrepare(runId: string): Promise<void> {
   work.stepStarted = Date.now();
   for (const p of setup.people) {
     const typed = p.otherRestrictions.map((t) => t.trim()).filter(Boolean);
-    if (typed.length === 0) continue;
+    const chartFoods = p.chartAccepted ? (p.chart?.avoidFoods ?? []).map((f) => f.trim()).filter(Boolean) : [];
+    if (typed.length === 0 && chartFoods.length === 0) continue;
     let rules: TypedRule[] | null = null;
-    if (hasAiKey()) {
+    if (typed.length > 0 && hasAiKey()) {
       const ai = await askJson<{ rules: TypedRule[] }>({
         task: 'typed-restrictions', model: settings.models.tagging, schema: RULE_SCHEMA, maxTokens: 1500,
-        system: `A household cook typed food restrictions for one person. For each one, return: text (as typed); strict (true if it is an allergy, intolerance, medical or religious restriction, or could be one; false only when it is clearly a taste dislike such as "doesn't like"); terms (every lower-case ingredient word or phrase a recipe might use for it, including Indian names and common forms, for example "brinjal", "eggplant", "aubergine", "baingan"); noun (one short word for it); avoidCuisines (the listed cuisines this entry rules out as a whole, for example "no Indian spices" or "no Indian food" rules out every Indian cuisine, "nothing spicy" rules out none; leave it empty when the entry is about an ingredient). When unsure whether it is strict, say true.`,
+        system: `A household cook typed food restrictions for one person. For each one, return: text (as typed); strict (true if it is an allergy, intolerance, medical or religious restriction, or could be one; false only when it is clearly a taste dislike such as "doesn't like"); terms (every lower-case ingredient word or phrase a recipe might use for it, including Indian names and common forms, for example "brinjal", "eggplant", "aubergine", "baingan"); noun (one short word for it); avoidCuisines (the listed cuisines this entry rules out as a whole, for example "no Indian spices" or "no Indian food" rules out every Indian cuisine, "nothing spicy" rules out none; leave it empty when the entry is about an ingredient); except (lower-case foods that contain the word but are fine, usually empty); maxSpice (the hottest food allowed when the entry is about heat: "nothing spicy", "can't take heat" → "mild"; "no chilli" → "none"; null for everything else, including "no Indian spices", which is about cuisine). For a heat entry leave terms empty. When unsure whether it is strict, say true.`,
         content: typed.map((t) => `- ${t}`).join('\n'),
       });
       spend(work, ai);
       rules = ai.data?.rules ?? null;
     }
     // Without an AI answer, treat every typed entry as strict and match on its own words.
-    work.extras.typed[p.id] = rules ?? typed.map((text) => {
+    const typedRules: TypedRule[] = typed.length === 0 ? [] : (rules ?? typed.map((text) => {
       const noun = text.toLowerCase().replace(/\b(no|not|never|doesn't|does not|don't|like|likes|eat|eats|allergic|allergy|to|raw|any)\b/g, ' ').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
       return { text, strict: true, terms: noun ? [noun] : [], noun: noun || text, avoidCuisines: [] };
-    });
+    }));
+    // A heat limit is handled by the recipe's spice level, not by ingredient words. The text check backs up the AI.
+    for (const r of typedRules) {
+      r.source = 'typed';
+      r.maxSpice = r.maxSpice ?? spiceLimitFromText(r.text);
+      if (r.maxSpice) r.terms = [];
+    }
+    // Foods the diet chart says to avoid are matched by words only: no per-recipe AI check, so no extra cost per run.
+    let chartRules: TypedRule[] = [];
+    if (chartFoods.length > 0) {
+      let ai: { rules: TypedRule[] } | null = null;
+      if (hasAiKey()) {
+        const r = await askJson<{ rules: TypedRule[] }>({
+          task: 'chart-foods', model: settings.models.tagging, schema: RULE_SCHEMA, maxTokens: 1500,
+          system: `A dietitian's diet chart tells someone to avoid these foods. For each one, return: text (as given); strict (always true); terms (every lower-case ingredient word or phrase a recipe might use for it, including Indian names and common forms, for example for "rice": "rice", "basmati", "biryani rice", "chawal", "pulao rice"); noun (one short word); avoidCuisines (always empty); except (lower-case ingredients that contain the word but are the usual healthy swap and are NOT the avoided food, for example for "rice": "cauliflower rice", "broccoli rice", "millet", "quinoa", "rice flour" only if clearly a different food, otherwise leave out); maxSpice (always null). Do not add foods that were not listed.`,
+          content: chartFoods.map((t) => `- ${t}`).join('\n'),
+        });
+        spend(work, r);
+        ai = r.data;
+      }
+      chartRules = (ai?.rules ?? chartFoods.map((text) => ({ text, strict: true, terms: [text], noun: text, avoidCuisines: [], except: [] as string[], maxSpice: null })))
+        .map((r) => ({ ...r, strict: true, avoidCuisines: [], maxSpice: null, source: 'chart' as const }))
+        // Limits ("excess oil") and categories ("processed foods") are not bans on one food; kitchen staples would empty the library.
+        .flatMap((r) => {
+          const terms = enforceableFoodTerms(r.text, r.terms);
+          return terms ? [{ ...r, terms }] : [];
+        });
+    }
+    work.extras.typed[p.id] = [...typedRules, ...chartRules];
   }
   // Religious "avoid" tiles (no pork, no beef) also get the AI check, not only the word list.
   for (const p of setup.people) {
@@ -183,13 +216,16 @@ const CHECK_SCHEMA = {
 export async function stepCheckTyped(runId: string): Promise<void> {
   const { setup, work } = await load(runId);
   // Dislikes are checked too: a typed dislike such as "no Indian spices" cannot be matched by ingredient words alone.
-  const strictPeople = setup.people.filter((p) => (work.extras.typed[p.id] ?? []).length > 0);
+  // Chart food rules and heat limits are settled by words and spice level, so only typed ingredient rules need the AI.
+  const checkable = (p: Setup['people'][number]) => (work.extras.typed[p.id] ?? []).filter((r) => r.source !== 'chart' && !r.maxSpice);
+  const strictPeople = setup.people.filter((p) => checkable(p).length > 0);
   if (strictPeople.length === 0 || !hasAiKey()) return;
   const recipes = await loadSlim();
   for (const p of strictPeople) {
-    const rules = work.extras.typed[p.id];
-    const avoid = new Set(rules.flatMap((r) => r.avoidCuisines ?? []));
-    const pool = recipes.filter((r) => p.diet && DIETS_FOR[r.category].includes(p.diet) && !avoid.has(r.cuisine));
+    const rules = checkable(p);
+    // Only recipes that already pass every plain-code filter are worth an AI look: it keeps the run cheap.
+    const [own] = formGroups([p], setup.people, { typed: work.extras.typed, aiExcluded: {} });
+    const pool = recipes.filter((r) => p.diet && DIETS_FOR[r.category].includes(p.diet) && fits(own, r).ok);
     const chunks: SlimRecipe[][] = [];
     for (let i = 0; i < pool.length; i += 150) chunks.push(pool.slice(i, i + 150));
     const answers = await askMany<{ flagged: number[] }>(chunks.map((chunk) => ({
@@ -268,7 +304,7 @@ export async function stepTopUp(runId: string): Promise<boolean> {
   const seen = new Set<string>();
   const add = (list: { raw: RawRecipe }[]) => { for (const c of list) if (raws.length < batch && !seen.has(c.raw.url)) { seen.add(c.raw.url); raws.push(c.raw); } };
   // Favourite dishes missing from the library come first: pages already read, then YouTube.
-  for (const dish of gaps.wanted) add(await findExtracted(dish.split(' ').filter((w) => w.length > 3).slice(0, 2), 2));
+  for (const dish of gaps.wanted) add(await findExtracted(dishHead(dish) ? [dishHead(dish) as string] : dish.split(' ').filter((w) => w.length > 3).slice(0, 2), 2));
   if (raws.length < batch && work.topUpRounds === 1) for (const r of await youtubeFinds(gaps.wanted, batch - raws.length)) if (!seen.has(r.url)) { seen.add(r.url); raws.push(r); }
   if (raws.length < batch && short > 0) add(await findExtracted([], batch - raws.length));
   if (raws.length === 0) { await saveWork(runId, work); return false; }

@@ -84,16 +84,25 @@ async function settleAndSave(all: { raw: RawRecipe; tag: TagAnswer | null }[], o
   rulings.forEach((r, i) => { count(r); if (r.data) rulingFor.set(asks[i].x.raw.url, r.data); });
 
   for (const x of items) {
-    const done = x.tag ? finalise(x.raw, x.tag, sourceName(x.raw.source), rulingFor.get(x.raw.url)) : { ok: false as const, reason: 'could not be tagged' };
-    if (done.ok) {
-      await saveRecipe(done.slim, done.full);
-      await setCandidate(x.raw.url, 'done');
-      out.saved.push(done.slim.id);
-    } else {
-      await setCandidate(x.raw.url, 'rejected', { reason: done.reason });
-      out.rejected++;
-    }
+    const id = await saveTagged(x.raw, x.tag, rulingFor.get(x.raw.url));
+    if (id) out.saved.push(id); else out.rejected++;
   }
+}
+
+/**
+ * The one way a tagged page becomes a library recipe, whoever tagged it (the API or a Claude Code chat):
+ * the same safety checks (diet word list, allergen word list, timings, spice level) and the same stored shape.
+ * A disputed allergen with no ruling stays "unsure", which the planner treats as present.
+ */
+export async function saveTagged(raw: RawRecipe, tag: TagAnswer | null, ruling?: Partial<Record<AllergenId, 'yes' | 'no' | 'unsure'>>, note?: string): Promise<string | null> {
+  const done = tag ? finalise(raw, tag, sourceName(raw.source), ruling) : { ok: false as const, reason: 'could not be tagged' };
+  if (done.ok) {
+    await saveRecipe(done.slim, done.full);
+    await setCandidate(raw.url, 'done', { reason: note });
+    return done.slim.id;
+  }
+  await setCandidate(raw.url, 'rejected', { reason: done.reason });
+  return null;
 }
 
 /** Stage 3 (live): tag these pages now and save the good ones. Used by the first build and by top-up. */

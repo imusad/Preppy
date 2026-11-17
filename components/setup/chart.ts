@@ -152,6 +152,8 @@ export function summaryLines(chart: Chart): SummaryLine[] {
     },
   ];
   if (chart.avoid.length) lines.push({ key: 'avoid', text: 'Avoid: ' + chart.avoid.join(', '), unsure: false });
+  if (chart.mealKcal) lines.push({ key: 'mealKcal', text: 'About ' + chart.mealKcal.toLocaleString('en-IN') + ' kcal per lunch or dinner', unsure: false });
+  if (chart.avoidFoods?.length) lines.push({ key: 'avoidFoods', text: 'Foods to avoid: ' + chart.avoidFoods.join(', '), unsure: unsure('avoidFoods') });
   return lines;
 }
 
